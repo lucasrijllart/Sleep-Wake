@@ -1,6 +1,6 @@
 import sys
 import pygame
-from SimulatorPackage.Brai import Vehicle
+from SimulatorPackage.Vehicle import Vehicle
 from SimulatorPackage.Light import Light
 
 
