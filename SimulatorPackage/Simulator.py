@@ -19,7 +19,7 @@ def run():
     background.fill(white)
 
     iterations = 200
-    v1 = Vehicle(screen, [20, 20])
+    v1 = Vehicle(screen, [20, 20], 40)
     all_sprites = pygame.sprite.RenderPlain(v1)
     position = []
 
@@ -37,10 +37,9 @@ def run():
                 v1._bothwheels()
 
         all_sprites.update(t)
-        position.append(v1.get_pos())
         clock.tick()
         screen.blit(background, (0, 0))
         all_sprites.draw(screen)
         pygame.display.flip()
         pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
-    print('Finished: ', position)
+    print('Finished: ')
