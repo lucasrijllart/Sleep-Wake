@@ -1,6 +1,7 @@
 import sys
 import pygame
-from SimulatorPackage.Vehicle import Vehicle
+#from SimulatorPackage.Vehicle import Vehicle
+from SimulatorPackage.Brai import Vehicle
 
 
 def run():
@@ -17,11 +18,12 @@ def run():
     background = background.convert(background)
     background.fill(white)
 
-    v1 = Vehicle(screen)
+    iterations = 200
+    v1 = Vehicle(screen, [20, 20])
     all_sprites = pygame.sprite.RenderPlain(v1)
+    position = []
 
-
-    while 1:
+    for t in range(1, iterations):
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
@@ -34,9 +36,11 @@ def run():
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
                 v1._bothwheels()
 
-        all_sprites.update()
+        all_sprites.update(t)
+        position.append(v1.get_pos())
         clock.tick()
         screen.blit(background, (0, 0))
         all_sprites.draw(screen)
         pygame.display.flip()
         pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
+    print('Finished: ', position)

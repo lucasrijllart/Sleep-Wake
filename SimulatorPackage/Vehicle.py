@@ -19,6 +19,14 @@ class Vehicle(pygame.sprite.Sprite):
         # pygame.draw.circle(self.image, [0, 255, 0], [0, 27], 3)
         # pygame.draw.circle(self.image, [255, 0, 0], [25, 25], 26, 1)
 
+        self.T = 10
+        self.dt = 0.05
+
+        # wheel left and wheel right
+        self.wl, self.wr = 0, 0
+        # radius
+        self.R = 0.05
+
     def find_next_move(self):
         self.direction.x = round((-math.sin(math.radians(self.angle))) * 5, 3)
         self.direction.y = round((-math.cos(math.radians(self.angle))) * 5, 3)
@@ -26,7 +34,18 @@ class Vehicle(pygame.sprite.Sprite):
     def update(self):
 
         if True:
-            self._move()
+            self.move()
+
+    def move(self):
+
+
+        # velocity
+        vc = (self.wl + self.wr) / 2
+
+        va = (self.wr - self.wl) / (2 * self.R)
+
+
+
 
     def _move(self):
         self.find_next_move()
@@ -36,7 +55,7 @@ class Vehicle(pygame.sprite.Sprite):
         nose = [self.rect.centerx + self.direction.x * 5.4, self.rect.centery + self.direction.y * 5.4]
         if nose[0] < self.area.left or nose[0] > self.area.right\
                 or nose[1] < self.area.top or nose[1] > self.area.bottom:  # left side
-            print('Collision:', self.rect.topleft)
+            #print('Collision:', self.rect.topleft)
 
             randomturn = random.randint(20, 40)
             for x in range(0, randomturn):
