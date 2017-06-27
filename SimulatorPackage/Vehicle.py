@@ -16,14 +16,14 @@ class Vehicle(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 0.05
+        self.dt = 0.5
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.R = 25  # radius (ask chris of what)
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
         self.b = self.angle / 360 * 2 * math.pi  # original angle of vehicle (rad)
-        self.sensor_gain = 1  # amplify sensor signal
-        self.motor_gain = 1  # amplify motor signal
+        self.sensor_gain = 100  # amplify sensor signal
+        self.motor_gain = 10  # amplify motor signal
 
         # vehicle sensory and motor information
         self.sensors = []
@@ -34,20 +34,20 @@ class Vehicle(pygame.sprite.Sprite):
         self.update_graphics()
 
     def update_sensors(self, t, light_pos):
-        print('\nt:', t)
+        # print('\nt:', t)
 
         # velocity
         vc = (self.wheel_l + self.wheel_r) / 2
         va = (self.wheel_r - self.wheel_l) / (2 * self.R)
 
         # print('pos-1: ', self.pos[-1])
-        self.pos.append([self.pos[-1][0] + self.dt * vc * math.cos(self.bearing[t-1]),
-                         self.pos[-1][1] + self.dt * vc * math.sin(self.bearing[t-1])])  # update position
+        self.pos.append([self.pos[-1][0] - self.dt * vc * math.sin(self.bearing[t-1]),  # changed top to sin and bottom to cos and it worked
+                         self.pos[-1][1] - self.dt * vc * math.cos(self.bearing[t-1])])  # update position
         self.bearing.append(math.fmod(self.bearing[t-1] + self.dt * va, 2 * math.pi))  # update bearing
         # print('pos: ', self.pos[t])
-        print('bea:', self.bearing[-1])
+        # print('bea:', self.bearing[-1])
 
-        print('pos:', self.pos[t])
+        # print('pos:', self.pos[t])
         # calculate left sensor position
         sl0, sl1 = [self.pos[t][0] - self.R * math.cos(self.bearing[t] + self.b) - self.rect.width / 2,
                     self.pos[t][1] + self.R * math.sin(self.bearing[t] + self.b) - self.rect.height / 2]
@@ -66,13 +66,15 @@ class Vehicle(pygame.sprite.Sprite):
         # calculate sensor intensity
         sensor_l, sensor_r = [self.sensor_gain / distance_l, self.sensor_gain / distance_r]
         self.sensors.append([sensor_l, sensor_r])
+        # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [sensor_l * self.motor_gain + 2, sensor_r * self.motor_gain]
+        self.wheel_l, self.wheel_r = [sensor_l * self.motor_gain, sensor_r * self.motor_gain]
         self.motors.append([self.wheel_l, self.wheel_r])
+        # print(self.motors[-1])
 
     def update_graphics(self):
-        previous_center = self.rect.center
+        previous_center = self.pos[-1]
         degree = self.bearing[-1] * 180 / math.pi
         self.image = pygame.transform.rotozoom(self.original, degree, 0.5)
         self.rect = self.image.get_rect()
