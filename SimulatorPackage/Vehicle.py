@@ -23,11 +23,14 @@ class Vehicle(pygame.sprite.Sprite):
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
         self.b = self.angle / 360 * 2 * math.pi  # original angle of vehicle (rad)
         self.sensor_gain = 100  # amplify sensor signal
-        self.motor_gain = 10  # amplify motor signal
+        self.motor_gain = 20
+        # amplify motor signal
 
-        # vehicle sensory and motor information
-        self.sensors = []
-        self.motors = []
+        # vehicle sensory and motor information to extract for neural network
+        self.sensor_left = []
+        self.sensor_right = []
+        self.motor_left = []
+        self.motor_right = []
 
     def update(self, t, light_pos):
         self.update_sensors(t, light_pos)
@@ -65,12 +68,15 @@ class Vehicle(pygame.sprite.Sprite):
 
         # calculate sensor intensity
         sensor_l, sensor_r = [self.sensor_gain / distance_l, self.sensor_gain / distance_r]
-        self.sensors.append([sensor_l, sensor_r])
+        self.sensor_left.append(sensor_l)
+        self.sensor_right.append(sensor_r)
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [sensor_l * self.motor_gain, sensor_r * self.motor_gain]
-        self.motors.append([self.wheel_l, self.wheel_r])
+        bias = 3
+        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain) + bias, sensor_r * self.motor_gain + bias]
+        self.motor_left.append(self.wheel_l)
+        self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
 
     def update_graphics(self):

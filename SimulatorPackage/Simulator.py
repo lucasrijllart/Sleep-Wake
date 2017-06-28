@@ -80,12 +80,8 @@ def run():
     print('Finished:')
 
     i = range(1, iterations)
-    left_sensor = [value[0] for value in v1.sensors]
-    right_sensor = [value[1] for value in v1.sensors]
-    left_wheel = [value[0] for value in v1.motors]
-    right_wheel = [value[1] for value in v1.motors]
 
-    plt.plot(i, left_sensor, 'r', i, right_sensor, 'y', i, left_wheel, 'g', i, right_wheel, 'b')
+    plt.plot(i, v1.sensor_left, 'r', i, v1.sensor_right, 'y', i, v1.motor_left, 'g', i, v1.motor_right, 'b')
     red_line = mlines.Line2D([], [], color='red', label='left sensor')
     yellow_line = mlines.Line2D([], [], color='yellow', label='right sensor')
     green_line = mlines.Line2D([], [], color='green', label='left motor')
