@@ -41,12 +41,12 @@ def show_sensors_motors(vehicle):
 
     direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) - math.sin(bearing) * radius
     direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) - math.cos(bearing) * radius
-    left_sensor = myfont.render(format(v1.sensors[-1][0], '.2f'), 1, (100, 100, 0))
+    left_sensor = myfont.render(format(v1.sensor_left[-1], '.2f'), 1, (100, 100, 0))
     screen.blit(left_sensor, [int(direction_x), int(direction_y)])
 
     direction_x = (vehicle.pos[-1][0] + math.cos(bearing) * radius) - math.sin(bearing) * radius
     direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) - math.cos(bearing) * radius
-    right_sensor = myfont.render(format(v1.sensors[-1][1], '.2f'), 1, (100, 100, 0))
+    right_sensor = myfont.render(format(v1.sensor_right[-1], '.2f'), 1, (100, 100, 0))
     screen.blit(right_sensor, [int(direction_x), int(direction_y)])
 
 
