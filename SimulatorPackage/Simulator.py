@@ -4,7 +4,7 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-from SimulatorPackage.Vehicle import Vehicle
+from SimulatorPackage.Vehicles import Attacker, Vehicle
 from SimulatorPackage.Light import Light
 
 
@@ -66,7 +66,8 @@ def run_simulation(iteration, graphics, clock, all_sprites, light):
             screen.blit(background, (0, 0))
             all_sprites.draw(screen)
 
-            show_sensors_motors(screen, all_sprites.sprites()[0])
+            sprites = [sprite for sprite in all_sprites.sprites() if isinstance(sprite, Attacker) or isinstance(sprite, Vehicle)]
+            [show_sensors_motors(screen, sprite) for sprite in sprites]
 
             pygame.display.flip()
             pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
@@ -101,7 +102,7 @@ def run(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
         l_y = 400
 
     # create sprites
-    v1 = Vehicle([v1_x, v1_y], v1_angle)
+    v1 = Attacker([v1_x, v1_y], v1_angle)
     light = Light([l_x, l_y])
     all_sprites = pygame.sprite.RenderPlain(v1, light)
 
@@ -113,7 +114,8 @@ window_width = 1280
 window_height = 720
 
 iterations = 500  # number of iterations to run simulation for
-show_graphics = True
+show_graphics = True  # True shows graphical window, False doesn't
+
 for x in range(0, 1):
     run(iterations, show_graphics, True, True, True)
 
