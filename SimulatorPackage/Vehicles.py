@@ -7,7 +7,7 @@ class Vehicle(pygame.sprite.Sprite):
     def __init__(self, pos, angle):
         # pygame init
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('images/simple1.png')  # image of vehicle  TODO: change image
+        self.image = pygame.image.load('images/vehicle.png')  # image of vehicle
         self.original = self.image  # original image to use when rotating
         self.rect = self.image.get_rect()  # rectangle bounds of image
         self.rect.center = pos # set bounds as vehicle starting position
@@ -86,7 +86,7 @@ class Attacker(pygame.sprite.Sprite):
     def __init__(self, pos, angle):
         # pygame init
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('images/simple1.png')  # image of vehicle
+        self.image = pygame.image.load('images/attacker.png')  # image of vehicle
         self.original = self.image  # original image to use when rotating
         self.rect = self.image.get_rect()  # rectangle bounds of image
         self.rect.center = pos # set bounds as vehicle starting position

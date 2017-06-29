@@ -119,4 +119,3 @@ show_graphics = True  # True shows graphical window, False doesn't
 for x in range(0, 1):
     run(iterations, show_graphics, True, True, True)
 
-# TODO: create new vehicle class where we feed motor inputs and get sensory data
