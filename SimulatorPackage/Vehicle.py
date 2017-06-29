@@ -21,7 +21,6 @@ class Vehicle(pygame.sprite.Sprite):
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
-        self.b = self.angle / 360 * 2 * math.pi  # original angle of vehicle (rad)
         self.sensor_gain = 100  # amplify sensor signal
         self.motor_gain = 10  # amplify motor signal
         self.bias = 2  # automatically added wheel bias to both
