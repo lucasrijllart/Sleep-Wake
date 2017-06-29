@@ -1,16 +1,16 @@
 import sys
 import pygame
 import math
+import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from SimulatorPackage.Vehicle import Vehicle
 from SimulatorPackage.Light import Light
 
 pygame.init()
-screen = pygame.display.set_mode((640, 480))
-pygame.display.set_caption("Braitenberg vehicle simulation")
-for e in pygame.event.get():
-    pygame.key.set_repeat(50, 20)
+window_width = 1280
+window_height = 720
+screen = pygame.display.set_mode((window_width, window_height))
 clock = pygame.time.Clock()
 
 white = 240, 240, 240
@@ -18,16 +18,22 @@ background = pygame.Surface(screen.get_size())
 background = background.convert(background)
 background.fill(white)
 
-iterations = 300
+iterations = 1000
 myfont = pygame.font.SysFont('monospace', 12)
-v1 = Vehicle(screen, [100, 100], 180)
-light = Light([400, 400])
+
+v1_x = random.randint(25, window_width - 25)
+v1_y = random.randint(25, window_height - 25)
+v1_angle = random.randint(0, 360)
+v1 = Vehicle(screen, [v1_x, v1_y], v1_angle)
+l_x = random.randint(25, window_width - 25)
+l_y = random.randint(25, window_height - 25)
+light = Light([l_x, l_y])
 all_sprites = pygame.sprite.RenderPlain(v1, light)
 
 
 def show_sensors_motors(vehicle):
     bearing = vehicle.bearing[-1]
-    radius = vehicle.R + 5
+    radius = vehicle.radius + 5
 
     direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
     direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
@@ -88,3 +94,7 @@ def run():
     blue_line = mlines.Line2D([], [], color='blue', label='right motor')
     plt.legend(handles=[red_line, yellow_line, green_line, blue_line])
     plt.show()
+
+    # TODO: starting position, angle, sensor and motor gain, light position (maybe) all randomly # done for most
+    # TODO: create new vehicle class where we feed motor inputs and get sensory data
+    # TODO: Refactor class to let us create different runs with differnet values that are passed in run as parameters

@@ -18,13 +18,13 @@ class Vehicle(pygame.sprite.Sprite):
         # vehicle logic init
         self.dt = 0.5
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
-        self.R = 25  # radius (ask chris of what)
+        self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
         self.b = self.angle / 360 * 2 * math.pi  # original angle of vehicle (rad)
         self.sensor_gain = 100  # amplify sensor signal
-        self.motor_gain = 20
-        # amplify motor signal
+        self.motor_gain = 10  # amplify motor signal
+        self.bias = 2  # automatically added wheel bias to both
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -39,9 +39,8 @@ class Vehicle(pygame.sprite.Sprite):
     def update_sensors(self, t, light_pos):
         # print('\nt:', t)
 
-        # velocity
-        vc = (self.wheel_l + self.wheel_r) / 2
-        va = (self.wheel_r - self.wheel_l) / (2 * self.R)
+        vc = (self.wheel_l + self.wheel_r) / 2  # velocity center
+        va = (self.wheel_r - self.wheel_l) / (2 * self.radius)  # velocity average
 
         # print('pos-1: ', self.pos[-1])
         self.pos.append([self.pos[-1][0] - self.dt * vc * math.sin(self.bearing[t-1]),  # changed top to sin and bottom to cos and it worked
@@ -50,15 +49,14 @@ class Vehicle(pygame.sprite.Sprite):
         # print('pos: ', self.pos[t])
         # print('bea:', self.bearing[-1])
 
-        # print('pos:', self.pos[t])
         # calculate left sensor position
-        sl0, sl1 = [self.pos[t][0] - self.R * math.cos(self.bearing[t] + self.b) - self.rect.width / 2,
-                    self.pos[t][1] + self.R * math.sin(self.bearing[t] + self.b) - self.rect.height / 2]
-        # print('sl0:', sl0, 'sl1:', sl1, ' topl:', self.rect.topleft)
+        sl0 = (self.pos[t][0] - math.cos(self.bearing[t]) * self.radius) - math.sin(self.bearing[t]) * self.radius
+        sl1 = (self.pos[t][1] + math.sin(self.bearing[t]) * self.radius) - math.cos(self.bearing[t]) * self.radius
+        # print('sl0:', sl0, 'sl1:', sl1)
 
         # calculate right sensor position
-        sr0, sr1 = [self.pos[t][0] + self.R * math.cos(self.bearing[t] - self.b),
-                    self.pos[t][1] + self.R * math.sin(self.bearing[t] - self.b) - self.rect.height / 2]
+        sr0 = (self.pos[t][0] + math.cos(self.bearing[t]) * self.radius) - math.sin(self.bearing[t]) * self.radius
+        sr1 = (self.pos[t][1] - math.sin(self.bearing[t]) * self.radius) - math.cos(self.bearing[t]) * self.radius
         # print('sr0:', sr0, 'sr1:', sr1, 'topr:', self.rect.topright,)
 
         # calculate square distance to light
@@ -73,8 +71,8 @@ class Vehicle(pygame.sprite.Sprite):
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        bias = 3
-        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain) + bias, sensor_r * self.motor_gain + bias]
+        self.wheel_l, self.wheel_r = [(sensor_r * self.motor_gain) + self.bias,
+                                      (sensor_l * self.motor_gain) + self.bias]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
