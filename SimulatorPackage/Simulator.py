@@ -8,7 +8,7 @@ from SimulatorPackage.Vehicle import Vehicle
 from SimulatorPackage.Light import Light
 
 
-def show_sensors_motors(vehicle):
+def show_sensors_motors(screen, vehicle):
     bearing = vehicle.bearing[-1]
     radius = vehicle.radius + 5
     my_font = pygame.font.SysFont('monospace', 12)
@@ -47,30 +47,38 @@ def show_graph(vehicle):
     plt.show()
 
 
-def run_simulation(iterations, clock, all_sprites, light):
-    for t in range(1, iterations):
+def run_simulation(iteration, graphics, clock, all_sprites, light):
+    if graphics:
+        screen = pygame.display.set_mode((window_width, window_height))
+        background = pygame.Surface(screen.get_size())
+        background = background.convert(background)
+        background.fill([240, 240, 240])
+
+    for t in range(1, iteration):
         clock.tick()
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
 
         all_sprites.update(t, light.pos)
-        screen.blit(background, (0, 0))
 
-        all_sprites.draw(screen)
+        if graphics:
+            screen.blit(background, (0, 0))
+            all_sprites.draw(screen)
 
-        show_sensors_motors(all_sprites.sprites()[0])
+            show_sensors_motors(screen, all_sprites.sprites()[0])
 
-        pygame.display.flip()
-        pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
+            pygame.display.flip()
+            pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
-    pygame.display.quit()
-    print('Finished:')
+    if graphics:
+        pygame.display.quit()
+    print('Finished')
 
     show_graph(all_sprites.sprites()[0])
 
 
-def run(iterations, veh_rand_pos, veh_rand_angle, light_rand_pos):
+def run(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
     clock = pygame.time.Clock()  # clock to count ticks and fps
 
     if veh_rand_pos:  # check if vehicle positions are random
@@ -93,26 +101,20 @@ def run(iterations, veh_rand_pos, veh_rand_angle, light_rand_pos):
         l_y = 400
 
     # create sprites
-    v1 = Vehicle(screen, [v1_x, v1_y], v1_angle)
+    v1 = Vehicle([v1_x, v1_y], v1_angle)
     light = Light([l_x, l_y])
     all_sprites = pygame.sprite.RenderPlain(v1, light)
 
-    run_simulation(iterations, clock, all_sprites, light)  # run simulation with given param
+    run_simulation(iteration, graphics, clock, all_sprites, light)  # run simulation with given param
 
 # pygame init
 pygame.init()
 window_width = 1280
 window_height = 720
-screen = pygame.display.set_mode((window_width, window_height))
-background = pygame.Surface(screen.get_size())
-background = background.convert(background)
-background.fill([240, 240, 240])
-
 
 iterations = 500  # number of iterations to run simulation for
+show_graphics = True
 for x in range(0, 1):
-    run(iterations, True, True, True)
+    run(iterations, show_graphics, True, True, True)
 
-
-    # TODO: create new vehicle class where we feed motor inputs and get sensory data
-    # TODO: make a simulator being able to run without visuals
+# TODO: create new vehicle class where we feed motor inputs and get sensory data

@@ -4,14 +4,13 @@ import math
 
 class Vehicle(pygame.sprite.Sprite):
 
-    def __init__(self, surface: pygame.Surface, pos, angle):
+    def __init__(self, pos, angle):
         # pygame init
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load('images/simple1.png')  # image of vehicle
         self.original = self.image  # original image to use when rotating
         self.rect = self.image.get_rect()  # rectangle bounds of image
         self.rect.center = pos # set bounds as vehicle starting position
-        self.area = surface.get_rect()  # screen boundary for vehicles
         self.angle = angle  # starting angle
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
