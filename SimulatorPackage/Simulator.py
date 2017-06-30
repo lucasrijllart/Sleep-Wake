@@ -4,6 +4,7 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import pandas
 from SimulatorPackage.Vehicles import Attacker, Vehicle
 from SimulatorPackage.Light import Light
 
@@ -32,6 +33,8 @@ def show_sensors_motors(screen, vehicle):
     direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) - math.cos(bearing) * radius
     right_sensor = my_font.render(format(vehicle.sensor_right[-1], '.2f'), 1, (100, 100, 0))
     screen.blit(right_sensor, [int(direction_x), int(direction_y)])
+
+    [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
 
 
 def show_graph(vehicle):
@@ -79,12 +82,12 @@ def run_simulation(iteration, graphics, clock, all_sprites, light):
     show_graph(all_sprites.sprites()[0])
 
 
-def run(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
+def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
     clock = pygame.time.Clock()  # clock to count ticks and fps
 
     if veh_rand_pos:  # check if vehicle positions are random
-        v1_x = random.randint(25, window_width - 25)
-        v1_y = random.randint(25, window_height - 25)
+        v1_x = random.randint(400, window_width - 400)  # was 25
+        v1_y = random.randint(100, window_height - 100)
     else:
         v1_x = 200
         v1_y = 200
@@ -95,8 +98,8 @@ def run(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
         v1_angle = 0
 
     if light_rand_pos:  # check if light pos is random
-        l_x = random.randint(25, window_width - 25)
-        l_y = random.randint(25, window_height - 25)
+        l_x = random.randint(400, window_width - 400)
+        l_y = random.randint(100, window_height - 100)
     else:
         l_x = 400
         l_y = 400
@@ -116,6 +119,13 @@ window_height = 720
 iterations = 500  # number of iterations to run simulation for
 show_graphics = True  # True shows graphical window, False doesn't
 
-for x in range(0, 1):
-    run(iterations, show_graphics, True, True, True)
+random_vehicle_pos = True
+random_vehicle_angle = True
+random_light_pos = True
 
+for x in range(0, 1):
+    init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+
+# TODO: keep track of how long it takes to simulate (could be useful)
+# TODO: stop simulation when vehicle is out of bounds
+# TODO: stop simulation when vehicle hits light

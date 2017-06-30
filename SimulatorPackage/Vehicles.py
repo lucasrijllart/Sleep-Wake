@@ -15,7 +15,7 @@ class Vehicle(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 0.5
+        self.dt = 0.07
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
