@@ -38,7 +38,7 @@ def show_sensors_motors(screen, vehicle):
 
 
 def show_graph(vehicle):
-    i = range(1, iterations)
+    i = range(0, len(vehicle.sensor_left))
 
     plt.plot(i, vehicle.sensor_left, 'r', i, vehicle.sensor_right, 'y',i, vehicle.motor_left, 'g',
              i, vehicle.motor_right, 'b')
@@ -50,89 +50,71 @@ def show_graph(vehicle):
     plt.show()
 
 
-def run_simulation(iteration, graphics, clock, all_sprites, vehicle, light):
-    if graphics:
-        screen = pygame.display.set_mode((window_width, window_height))
-        background = pygame.Surface(screen.get_size())
-        background = background.convert(background)
-        background.fill([240, 240, 240])
+class Simulator:
 
-    for t in range(1, iteration):
-        clock.tick()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                sys.exit()
+    def __init__(self):
+        pygame.init()
+        self.window_width = 1280
+        self.window_height = 720
 
+    def run_simulation(self, iteration, graphics, vehicle, light):
+        clock = pygame.time.Clock()  # clock to count ticks and fps
+        all_sprites = pygame.sprite.RenderPlain(vehicle, light)
+        if graphics:
+            screen = pygame.display.set_mode((self.window_width, self.window_height))
+            background = pygame.Surface(screen.get_size())
+            background = background.convert(background)
+            background.fill([240, 240, 240])
 
-        # conditions for simulation stop: light and maybe out of bounds
-        if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
-            break
+        for t in range(1, iteration):
+            clock.tick()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    sys.exit()
 
-        all_sprites.update(t, light.pos)
+            # conditions for simulation stop: light and maybe out of bounds
+            # if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
+                # break
+
+            all_sprites.update(t, light.pos)
+
+            if graphics:
+                screen.blit(background, (0, 0))
+                all_sprites.draw(screen)
+
+                show_sensors_motors(screen, vehicle)
+
+                pygame.display.flip()
+                pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
         if graphics:
-            screen.blit(background, (0, 0))
-            all_sprites.draw(screen)
+            pygame.display.quit()
+            show_graph(vehicle)
 
-            show_sensors_motors(screen, vehicle)
+        return vehicle
 
-            pygame.display.flip()
-            pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
+    def init_simulation(self, iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
+        if veh_rand_pos:  # check if vehicle positions are random
+            v1_x = random.randint(400, self.window_width - 400)  # was 25
+            v1_y = random.randint(100, self.window_height - 100)
+        else:
+            v1_x = 200
+            v1_y = 200
 
-    if graphics:
-        pygame.display.quit()
+        if veh_rand_angle:  # check if vehicle angle is random
+            v1_angle = random.randint(0, 360)
+        else:
+            v1_angle = 180
 
-    print('Finished')
+        if light_rand_pos:  # check if light pos is random
+            l_x = random.randint(400, self.window_width - 400)
+            l_y = random.randint(100, self.window_height - 100)
+        else:
+            l_x = 200
+            l_y = 400
 
-    show_graph(all_sprites.sprites()[0])
+        # create sprites
+        vehicle = Attacker([v1_x, v1_y], v1_angle)
+        light = Light([l_x, l_y])
 
-
-
-
-def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
-    clock = pygame.time.Clock()  # clock to count ticks and fps
-
-    if veh_rand_pos:  # check if vehicle positions are random
-        v1_x = random.randint(400, window_width - 400)  # was 25
-        v1_y = random.randint(100, window_height - 100)
-    else:
-        v1_x = 500
-        v1_y = 200
-
-    if veh_rand_angle:  # check if vehicle angle is random
-        v1_angle = random.randint(0, 360)
-    else:
-        v1_angle = 180
-
-    if light_rand_pos:  # check if light pos is random
-        l_x = random.randint(400, window_width - 400)
-        l_y = random.randint(100, window_height - 100)
-    else:
-        l_x = 400
-        l_y = 400
-
-    # create sprites
-    vehicle = Attacker([v1_x, v1_y], v1_angle)
-    light = Light([l_x, l_y])
-    all_sprites = pygame.sprite.RenderPlain(vehicle, light)
-
-    run_simulation(iteration, graphics, clock, all_sprites, vehicle, light)  # run simulation with given param
-
-# pygame init
-pygame.init()
-window_width = 1280
-window_height = 720
-
-iterations = 300  # number of iterations to run simulation for
-show_graphics = True  # True shows graphical window, False doesn't
-
-random_vehicle_pos = False
-random_vehicle_angle = False
-random_light_pos = True
-
-for x in range(0, 1):
-    init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
-
-# TODO: keep track of how long it takes to simulate (could be useful)
-# TODO: stop simulation when vehicle is out of bounds
-# TODO: stop simulation when vehicle hits light
+        self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
