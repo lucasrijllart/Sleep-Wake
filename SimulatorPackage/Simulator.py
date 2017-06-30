@@ -50,7 +50,7 @@ def show_graph(vehicle):
     plt.show()
 
 
-def run_simulation(iteration, graphics, clock, all_sprites, light):
+def run_simulation(iteration, graphics, clock, all_sprites, vehicle, light):
     if graphics:
         screen = pygame.display.set_mode((window_width, window_height))
         background = pygame.Surface(screen.get_size())
@@ -63,23 +63,30 @@ def run_simulation(iteration, graphics, clock, all_sprites, light):
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
 
+
+        # conditions for simulation stop: light and maybe out of bounds
+        if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
+            break
+
         all_sprites.update(t, light.pos)
 
         if graphics:
             screen.blit(background, (0, 0))
             all_sprites.draw(screen)
 
-            sprites = [sprite for sprite in all_sprites.sprites() if isinstance(sprite, Attacker) or isinstance(sprite, Vehicle)]
-            [show_sensors_motors(screen, sprite) for sprite in sprites]
+            show_sensors_motors(screen, vehicle)
 
             pygame.display.flip()
             pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
     if graphics:
         pygame.display.quit()
+
     print('Finished')
 
     show_graph(all_sprites.sprites()[0])
+
+
 
 
 def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
@@ -89,13 +96,13 @@ def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_ran
         v1_x = random.randint(400, window_width - 400)  # was 25
         v1_y = random.randint(100, window_height - 100)
     else:
-        v1_x = 200
+        v1_x = 500
         v1_y = 200
 
     if veh_rand_angle:  # check if vehicle angle is random
         v1_angle = random.randint(0, 360)
     else:
-        v1_angle = 0
+        v1_angle = 180
 
     if light_rand_pos:  # check if light pos is random
         l_x = random.randint(400, window_width - 400)
@@ -105,22 +112,22 @@ def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_ran
         l_y = 400
 
     # create sprites
-    v1 = Attacker([v1_x, v1_y], v1_angle)
+    vehicle = Attacker([v1_x, v1_y], v1_angle)
     light = Light([l_x, l_y])
-    all_sprites = pygame.sprite.RenderPlain(v1, light)
+    all_sprites = pygame.sprite.RenderPlain(vehicle, light)
 
-    run_simulation(iteration, graphics, clock, all_sprites, light)  # run simulation with given param
+    run_simulation(iteration, graphics, clock, all_sprites, vehicle, light)  # run simulation with given param
 
 # pygame init
 pygame.init()
 window_width = 1280
 window_height = 720
 
-iterations = 500  # number of iterations to run simulation for
+iterations = 300  # number of iterations to run simulation for
 show_graphics = True  # True shows graphical window, False doesn't
 
-random_vehicle_pos = True
-random_vehicle_angle = True
+random_vehicle_pos = False
+random_vehicle_angle = False
 random_light_pos = True
 
 for x in range(0, 1):

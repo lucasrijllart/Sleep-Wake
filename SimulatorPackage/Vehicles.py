@@ -119,6 +119,8 @@ class Attacker(pygame.sprite.Sprite):
         vc = (self.wheel_l + self.wheel_r) / 2  # velocity center
         va = (self.wheel_r - self.wheel_l) / (2 * self.radius)  # velocity average
 
+        self.dt = min(100 / (vc ** 2 + 1), 2)
+
         # print('pos-1: ', self.pos[-1])
         self.pos.append([self.pos[-1][0] - self.dt * vc * math.sin(self.bearing[t-1]),  # changed top to sin and bottom to cos and it worked
                          self.pos[-1][1] - self.dt * vc * math.cos(self.bearing[t-1])])  # update position
