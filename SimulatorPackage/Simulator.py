@@ -4,9 +4,8 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-import pandas
-from SimulatorPackage.Vehicles import Attacker, Vehicle
-from SimulatorPackage.Light import Light
+from Vehicles import Attacker
+from Light import Light
 
 
 def show_sensors_motors(screen, vehicle):
@@ -40,13 +39,13 @@ def show_sensors_motors(screen, vehicle):
 def show_graph(vehicle):
     i = range(0, len(vehicle.sensor_left))
 
-    plt.plot(i, vehicle.sensor_left, 'r', i, vehicle.sensor_right, 'y',i, vehicle.motor_left, 'g',
+    plt.plot(i, vehicle.sensor_left, 'r', i, vehicle.sensor_right, 'y', i, vehicle.motor_left, 'g',
              i, vehicle.motor_right, 'b')
-    red_line = mlines.Line2D([], [], color='red', label='left sensor')
-    yellow_line = mlines.Line2D([], [], color='yellow', label='right sensor')
-    green_line = mlines.Line2D([], [], color='green', label='left motor')
-    blue_line = mlines.Line2D([], [], color='blue', label='right motor')
-    plt.legend(handles=[red_line, yellow_line, green_line, blue_line])
+    # red_line = mlines.Line2D([], [], color='red', label='left sensor')
+    # yellow_line = mlines.Line2D([], [], color='yellow', label='right sensor')
+    # green_line = mlines.Line2D([], [], color='green', label='left motor')
+    # blue_line = mlines.Line2D([], [], color='blue', label='right motor')
+    # plt.legend(handles=[red_line, yellow_line, green_line, blue_line])
     plt.show()
 
 

@@ -100,7 +100,7 @@ class Attacker(pygame.sprite.Sprite):
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
         self.sensor_gain = 100  # amplify sensor signal
-        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 10, 10, 10, 10  # amplify motor signal
+        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 10, 0, 10  # amplify motor signal
         self.bias = 2  # automatically added wheel bias to both
 
         # vehicle sensory and motor information to extract for neural network

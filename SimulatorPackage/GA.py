@@ -1,7 +1,8 @@
-from SimulatorPackage.Simulator import Simulator
-from SimulatorPackage.Vehicles import Attacker
-from SimulatorPackage.Light import Light
-import random, math, sys
+from Simulator import Simulator
+from Vehicles import Attacker
+from Light import Light
+import random
+import math
 import matplotlib.pyplot as plt
 
 
@@ -54,7 +55,6 @@ def get_fitness(ind):
     # create Simulation
     vehicle = sim.run_simulation(iterations, False, vehicle, light)
 
-
     # calculate fitness with 1/distance
     distance = 0
     for step in vehicle.pos:
@@ -102,10 +102,10 @@ def run_ga():
     for ind in all_fitness:
         if ind[2] > best_ind[2]:
             best_ind = ind
-    print('best:', best_ind)
+    print 'best: ' + str(best_ind)
     best_fit = [best_ind[2]]
     for generation in range(0, individuals * generations):
-        print('\rgen: ' + str(generation), end='')
+        print 'gen: ' + str(generation)
 
         # find 2 random individuals
         rand_ind1 = random.randint(0, individuals-1)
@@ -128,7 +128,7 @@ def run_ga():
         else:
             best_fit.append(best_ind[2])
 
-    print('\nBest fitness:', best_fit[-1])
+    print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
     run_winner(best_ind[1])
 
     plt.plot(range(0, len(best_fit)), best_fit)
