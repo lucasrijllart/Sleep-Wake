@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 def init_pool():
     pool = []
     for i in range(0, individuals):
-        ind = [random.randint(0, 20) for i in range(0, 4)]
+        ind = [random.randint(0, 20) for x in range(0, 6)]
         pool.append(ind)
     return pool
 
@@ -50,7 +50,7 @@ def get_all_fitnesses(pool):
 def get_fitness(ind):
     # create sprites
     vehicle = Attacker([start_x, start_y], start_a)
-    vehicle.set_values(ind[0], ind[1], ind[2], ind[3])
+    vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
 
     # create Simulation
     vehicle = sim.run_simulation(iterations, False, vehicle, light)
@@ -72,7 +72,7 @@ def get_fitness(ind):
     fitness = fitness / len(distances)
     fitness = 1 / fitness
     '''
-    return fitness
+    return fitness*100000
 
 
 def tournament(individual1, individual2):
@@ -88,7 +88,7 @@ def tournament(individual1, individual2):
 
 def run_winner(ind):
     vehicle = Attacker([start_x, start_y], start_a)
-    vehicle.set_values(ind[0], ind[1], ind[2], ind[3])
+    vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
 
     # create Simulation
     sim.run_simulation(iterations, True, vehicle, light)
@@ -105,7 +105,7 @@ def run_ga():
     print 'best: ' + str(best_ind)
     best_fit = [best_ind[2]]
     for generation in range(0, individuals * generations):
-        print 'gen: ' + str(generation)
+        print '\rgen: ' + str(generation) + '/' + str(individuals*generations),
 
         # find 2 random individuals
         rand_ind1 = random.randint(0, individuals-1)
@@ -128,15 +128,15 @@ def run_ga():
         else:
             best_fit.append(best_ind[2])
 
-    print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
+    print '\nBest fitness: ' + str(best_fit[-1]) + str(best_ind)
     run_winner(best_ind[1])
 
     plt.plot(range(0, len(best_fit)), best_fit)
     plt.show()
 
 
-individuals = 50
-generations = 2
+individuals = 200
+generations = 5
 crossover_rate = 0.7
 mutation_rate = 0.3
 iterations = 200

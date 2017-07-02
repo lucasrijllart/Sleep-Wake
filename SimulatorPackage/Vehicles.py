@@ -101,7 +101,7 @@ class Attacker(pygame.sprite.Sprite):
         self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
         self.sensor_gain = 100  # amplify sensor signal
         self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 10, 0, 10  # amplify motor signal
-        self.bias = 2  # automatically added wheel bias to both
+        self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -109,11 +109,13 @@ class Attacker(pygame.sprite.Sprite):
         self.motor_left = []
         self.motor_right = []
 
-    def set_values(self, ll, lr, rr, rl):
+    def set_values(self, ll, lr, rr, rl, bl, br):
         self.motor_gain_ll = ll
         self.motor_gain_lr = lr
         self.motor_gain_rr = rr
         self.motor_gain_rl = rl
+        self.bias_l = bl
+        self.bias_r = br
 
     def update(self, t, light_pos):
         self.update_sensors(t, light_pos)
@@ -156,8 +158,8 @@ class Attacker(pygame.sprite.Sprite):
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain_ll) + (sensor_r * self.motor_gain_rl) + self.bias,
-                                      (sensor_r * self.motor_gain_rr) + (sensor_l * self.motor_gain_lr) + self.bias]
+        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain_ll) + (sensor_r * self.motor_gain_rl) + self.bias_l,
+                                      (sensor_r * self.motor_gain_rr) + (sensor_l * self.motor_gain_lr) + self.bias_r]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])

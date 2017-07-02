@@ -3,7 +3,6 @@ import pygame
 import math
 import random
 import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 from Vehicles import Attacker
 from Light import Light
 
