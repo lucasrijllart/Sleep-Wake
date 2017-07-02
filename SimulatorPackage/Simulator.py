@@ -4,10 +4,11 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-import pandas
 from SimulatorPackage.Vehicles import Attacker, Vehicle
 from SimulatorPackage.Light import Light
-
+import numpy
+import pandas as pd
+import pyflux as pf
 
 def show_sensors_motors(screen, vehicle):
     bearing = vehicle.bearing[-1]
@@ -84,8 +85,8 @@ def run_simulation(iteration, graphics, clock, all_sprites, vehicle, light):
 
     print('Finished')
 
-    show_graph(all_sprites.sprites()[0])
-
+    show_graph(vehicle)
+    return vehicle
 
 
 
@@ -116,7 +117,7 @@ def init_simulation(iteration, graphics, veh_rand_pos, veh_rand_angle, light_ran
     light = Light([l_x, l_y])
     all_sprites = pygame.sprite.RenderPlain(vehicle, light)
 
-    run_simulation(iteration, graphics, clock, all_sprites, vehicle, light)  # run simulation with given param
+    return run_simulation(iteration, graphics, clock, all_sprites, vehicle, light)  # run simulation with given param
 
 # pygame init
 pygame.init()
@@ -131,8 +132,39 @@ random_vehicle_angle = False
 random_light_pos = True
 
 for x in range(0, 1):
-    init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+    v = init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
 
 # TODO: keep track of how long it takes to simulate (could be useful)
 # TODO: stop simulation when vehicle is out of bounds
 # TODO: stop simulation when vehicle hits light
+
+
+# print(v.sensor_left)
+# print(v.sensor_right)
+# print(v.motor_left)
+# print(v.motor_right)
+
+# collect data for narx
+inputs = []
+targets = []
+for i in range(0, len(v.motor_left)):
+        inputs.append([v.sensor_left[i], v.sensor_right[i], v.motor_left[i], v.motor_right[i] ])
+        targets.append([v.sensor_left[i], v.sensor_right[i]])
+print(inputs)
+
+# data in pandas data frame
+data = pd.DataFrame(inputs)
+data.columns = ['Sl', 'Sr', 'Ml', 'Mr']
+print(data)
+
+# data in numpy array
+data_arr = numpy.array([v.sensor_left, v.sensor_right, v.motor_left, v.motor_right])
+print(data_arr)
+
+# set up the model
+#model = pf.GPNARX(data=data_arr, ar=2, kernel=pf.OrnsteinUhlenbeck(), integ=2, target=[0, 1])
+
+model = pf.GPNARX(data=data, ar=4, kernel=pf.OrnsteinUhlenbeck(), integ=4, target=['Sl', 'Sr'])
+
+
+#model.fit("M-H", nsims=20000)
