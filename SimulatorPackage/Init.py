@@ -9,5 +9,5 @@ random_light_pos = True
 
 # for x in range(0, 1):
 sim = Simulator()
-sim.init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+vehicle = sim.init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
 

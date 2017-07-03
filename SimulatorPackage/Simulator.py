@@ -86,8 +86,8 @@ class Simulator:
                 pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
         if graphics:
-            pygame.display.quit()
             show_graph(vehicle)
+            pygame.display.quit()
 
         return vehicle
 
@@ -115,4 +115,4 @@ class Simulator:
         vehicle = Attacker([v1_x, v1_y], v1_angle)
         light = Light([l_x, l_y])
 
-        self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
+        return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param

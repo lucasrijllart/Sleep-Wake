@@ -135,8 +135,8 @@ def run_ga():
     plt.show()
 
 
-individuals = 200
-generations = 5
+individuals = 50
+generations = 2
 crossover_rate = 0.7
 mutation_rate = 0.3
 iterations = 200
