@@ -115,4 +115,4 @@ class Simulator:
         vehicle = Attacker([v1_x, v1_y], v1_angle)
         light = Light([l_x, l_y])
 
-        self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
+        return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
