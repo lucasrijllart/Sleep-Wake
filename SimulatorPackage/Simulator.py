@@ -1,4 +1,4 @@
-import sys
+import sys, time
 import pygame
 import math
 import random
@@ -52,7 +52,7 @@ class Simulator:
 
     def __init__(self):
         pygame.init()
-        self.window_width = 1280
+        self.window_width = 1240
         self.window_height = 720
 
     def run_simulation(self, iteration, graphics, vehicle, light):
@@ -74,7 +74,7 @@ class Simulator:
             # if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
                 # break
 
-            all_sprites.update(t, light.pos)
+            all_sprites.update(t, light)
 
             if graphics:
                 screen.blit(background, (0, 0))
@@ -84,6 +84,12 @@ class Simulator:
 
                 pygame.display.flip()
                 pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
+
+                time.sleep(0.03)
+
+            # remove this to let vehicle keep going
+            if vehicle.reached_light:
+                break
 
         if graphics:
             show_graph(vehicle)
@@ -99,11 +105,13 @@ class Simulator:
             v1_x = 200
             v1_y = 200
 
+        print veh_rand_angle
         if veh_rand_angle:  # check if vehicle angle is random
             v1_angle = random.randint(0, 360)
         else:
             v1_angle = 180
 
+        print v1_angle
         if light_rand_pos:  # check if light pos is random
             l_x = random.randint(400, self.window_width - 400)
             l_y = random.randint(100, self.window_height - 100)

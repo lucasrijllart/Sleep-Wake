@@ -55,6 +55,10 @@ def get_fitness(ind):
     # create Simulation
     vehicle = sim.run_simulation(iterations, False, vehicle, light)
 
+    if vehicle.reached_light:
+        individual_reached_light.append(True)
+        winner.append(ind)
+
     # calculate fitness with 1/distance
     distance = 0
     for step in vehicle.pos:
@@ -72,6 +76,7 @@ def get_fitness(ind):
     fitness = fitness / len(distances)
     fitness = 1 / fitness
     '''
+
     return fitness*100000
 
 
@@ -79,7 +84,7 @@ def tournament(individual1, individual2):
     fitness1 = get_fitness(individual1)
     fitness2 = get_fitness(individual2)
 
-    if fitness1 > fitness2:
+    if fitness1 >= fitness2:
         return perform_crossover(individual1, individual2, fitness1)
     else:
         ind2, ind1 = perform_crossover(individual2, individual1, fitness2)
@@ -114,19 +119,25 @@ def run_ga():
             rand_ind2 = random.randint(0, individuals-1)
         # compare fitnesses
         ind1, ind2 = tournament(pool[rand_ind1], pool[rand_ind2])
-        # winner overwrites loser with crossover
-        pool[rand_ind1] = ind1
-        pool[rand_ind2] = ind2
-        all_fitness[rand_ind1][2] = get_fitness(ind1)
-        all_fitness[rand_ind2][2] = get_fitness(ind2)
-        if all_fitness[rand_ind1][2] > best_ind[2]:
-            best_ind = all_fitness[rand_ind1]
-            best_fit.append(all_fitness[rand_ind1][2])
-        elif all_fitness[rand_ind2][2] > best_ind[2]:
-            best_ind = all_fitness[rand_ind2]
-            best_fit.append(all_fitness[rand_ind2][2])
+        if individual_reached_light[-1]:
+            ind = [x for x in all_fitness if winner[-1] in x][0]
+            best_ind = ind
+            best_fit.append(ind[2])
+            break
         else:
-            best_fit.append(best_ind[2])
+            # winner overwrites loser with crossover
+            pool[rand_ind1] = ind1
+            pool[rand_ind2] = ind2
+            all_fitness[rand_ind1][2] = get_fitness(ind1)
+            all_fitness[rand_ind2][2] = get_fitness(ind2)
+            if all_fitness[rand_ind1][2] > best_ind[2]:
+                best_ind = all_fitness[rand_ind1]
+                best_fit.append(all_fitness[rand_ind1][2])
+            elif all_fitness[rand_ind2][2] > best_ind[2]:
+                best_ind = all_fitness[rand_ind2]
+                best_fit.append(all_fitness[rand_ind2][2])
+            else:
+                best_fit.append(best_ind[2])
 
     print '\nBest fitness: ' + str(best_fit[-1]) + str(best_ind)
     run_winner(best_ind[1])
@@ -135,11 +146,13 @@ def run_ga():
     plt.show()
 
 
-individuals = 50
-generations = 2
+individuals = 20
+generations = 4
 crossover_rate = 0.7
 mutation_rate = 0.3
-iterations = 200
+iterations = 300
+individual_reached_light = [False]
+winner = []
 
 sim = Simulator()
 

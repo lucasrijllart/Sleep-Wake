@@ -98,10 +98,11 @@ class Attacker(pygame.sprite.Sprite):
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
-        self.bearing = [angle / 360 * 2 * math.pi]  # angle of vehicle (converted to rad)
+        self.bearing = [float(angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.sensor_gain = 100  # amplify sensor signal
         self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 10, 0, 10  # amplify motor signal
         self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
+        self.reached_light = False
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -117,8 +118,9 @@ class Attacker(pygame.sprite.Sprite):
         self.bias_l = bl
         self.bias_r = br
 
-    def update(self, t, light_pos):
-        self.update_sensors(t, light_pos)
+    def update(self, t, light):
+        self.update_sensors(t, light.pos)
+        self.check_reached_light(light)
         self.update_graphics()
 
     def update_sensors(self, t, light_pos):
@@ -127,7 +129,7 @@ class Attacker(pygame.sprite.Sprite):
         vc = (self.wheel_l + self.wheel_r) / 2  # velocity center
         va = (self.wheel_r - self.wheel_l) / (2 * self.radius)  # velocity average
 
-        self.dt = min(100 / (vc ** 2 + 1), 2)
+        self.dt = min(200 / (vc ** 2 + 1), 2)
 
         # print('pos-1: ', self.pos[-1])
         self.pos.append([self.pos[-1][0] - self.dt * vc * math.sin(self.bearing[t-1]),  # changed top to sin and bottom to cos and it worked
@@ -163,6 +165,12 @@ class Attacker(pygame.sprite.Sprite):
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
+
+    def check_reached_light(self, light):
+        # get distance
+        distance_to_light = math.sqrt((light.pos[0] - self.pos[-1][0])**2 + (light.pos[1] - self.pos[-1][1])**2)
+        if distance_to_light < (light.rect.width + light.rect.height)/6:
+            self.reached_light = True
 
     def update_graphics(self):
         previous_center = self.pos[-1]
