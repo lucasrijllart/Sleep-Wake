@@ -11,7 +11,11 @@ random_light_pos = True
 
 # for x in range(0, 1):
 sim = Simulator()
+<<<<<<< HEAD
 v = sim.init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+=======
+vehicle = sim.init_simulation(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+>>>>>>> 02a12a3d8d2bfa3dfec9f99b9576bf89c361f4fa
 
 # collect data for narx
 inputs = []
