@@ -17,10 +17,7 @@ def init_pool():
 def mutate(ind):
     for i in range(0, len(ind)):
         if random.random() < mutation_rate:
-            if random.random() < 0.5:
-                ind[i] += 1
-            else:
-                ind[i] -= 1
+            ind[i] = random.randint(1, 20)
     return ind
 
 
