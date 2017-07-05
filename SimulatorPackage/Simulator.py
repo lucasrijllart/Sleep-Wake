@@ -1,4 +1,5 @@
-import sys, time
+import sys
+import time
 import pygame
 import math
 import random
@@ -54,6 +55,7 @@ class Simulator:
         pygame.init()
         self.window_width = 1240
         self.window_height = 720
+        self.number_of_iterations = 0
 
     def run_simulation(self, iteration, graphics, vehicle, light):
         clock = pygame.time.Clock()  # clock to count ticks and fps
@@ -63,6 +65,7 @@ class Simulator:
             background = pygame.Surface(screen.get_size())
             background = background.convert(background)
             background.fill([240, 240, 240])
+            self.number_of_iterations = 0
 
         for t in range(1, iteration):
             clock.tick()
@@ -90,10 +93,12 @@ class Simulator:
             # remove this to let vehicle keep going
             if vehicle.reached_light:
                 break
+            self.number_of_iterations += 1
 
         if graphics:
             show_graph(vehicle)
             pygame.display.quit()
+            print 'Iterations: ' + str(self.number_of_iterations)
 
         return vehicle
 

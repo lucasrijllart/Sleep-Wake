@@ -17,7 +17,7 @@ def init_pool():
 def mutate(ind):
     for i in range(0, len(ind)):
         if random.random() < mutation_rate:
-            ind[i] = random.randint(1, 20)
+            ind[i] = random.randint(0, 20)
     return ind
 
 
@@ -88,15 +88,16 @@ def tournament(individual1, individual2):
         return [ind1, ind2]
 
 
-def run_winner(ind):
+def run_winner(graphics, ind):
+    print 'Running: ' + str(ind) + str(get_fitness(ind[1]))
+    ind = ind[1]
     vehicle = Attacker([start_x, start_y], start_a)
     vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
-
     # create Simulation
-    sim.run_simulation(iterations, True, vehicle, light)
+    sim.run_simulation(iterations, graphics, vehicle, light)
 
 
-def run_ga():
+def run_ga(graphics):
     pool = init_pool()
     all_fitness = get_all_fitnesses(pool)
     print(all_fitness)
@@ -116,29 +117,24 @@ def run_ga():
             rand_ind2 = random.randint(0, individuals-1)
         # compare fitnesses
         ind1, ind2 = tournament(pool[rand_ind1], pool[rand_ind2])
-        if individual_reached_light[-1]:
-            ind = [x for x in all_fitness if winner[-1] in x][0]
-            best_ind = ind
-            best_fit.append(ind[2])
-            break
+
+        # winner overwrites loser with crossover
+        pool[rand_ind1] = ind1
+        pool[rand_ind2] = ind2
+        all_fitness[rand_ind1][2] = get_fitness(ind1)
+        all_fitness[rand_ind2][2] = get_fitness(ind2)
+        if all_fitness[rand_ind1][2] > best_ind[2]:
+            best_ind = all_fitness[rand_ind1]
+            best_fit.append(all_fitness[rand_ind1][2])
+        elif all_fitness[rand_ind2][2] > best_ind[2]:
+            best_ind = all_fitness[rand_ind2]
+            best_fit.append(all_fitness[rand_ind2][2])
         else:
-            # winner overwrites loser with crossover
-            pool[rand_ind1] = ind1
-            pool[rand_ind2] = ind2
-            all_fitness[rand_ind1][2] = get_fitness(ind1)
-            all_fitness[rand_ind2][2] = get_fitness(ind2)
-            if all_fitness[rand_ind1][2] > best_ind[2]:
-                best_ind = all_fitness[rand_ind1]
-                best_fit.append(all_fitness[rand_ind1][2])
-            elif all_fitness[rand_ind2][2] > best_ind[2]:
-                best_ind = all_fitness[rand_ind2]
-                best_fit.append(all_fitness[rand_ind2][2])
-            else:
-                best_fit.append(best_ind[2])
+            best_fit.append(best_ind[2])
 
     print '\nBest fitness: ' + str(best_fit[-1]) + str(best_ind)
-    run_winner(best_ind[1])
-
+    print 'Reached light: ' + str(individual_reached_light[-1])
+    run_winner(graphics, best_ind)
     plt.plot(range(0, len(best_fit)), best_fit)
     plt.show()
 
@@ -147,7 +143,6 @@ individuals = 20
 generations = 4
 crossover_rate = 0.7
 mutation_rate = 0.3
-iterations = 300
 individual_reached_light = [False]
 winner = []
 
@@ -161,4 +156,9 @@ light_x = random.randint(25, sim.window_width - 25)
 light_y = random.randint(25, sim.window_height - 25)
 light = Light([light_x, light_y])
 
-run_ga()
+graphics = True
+start_light_dist = math.sqrt((light_x - start_x)**2 + (light_y - start_y)**2)
+print start_light_dist
+iterations = int(start_light_dist/2)  # Halved number to limit number of frames and tested with a big distance
+
+run_ga(graphics)
