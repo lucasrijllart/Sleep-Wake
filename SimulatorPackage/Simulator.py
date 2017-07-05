@@ -102,7 +102,7 @@ class Simulator:
 
         return vehicle
 
-    def init_simulation(self, iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
+    def init_simulation_random(self, iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):
         if veh_rand_pos:  # check if vehicle positions are random
             v1_x = random.randint(400, self.window_width - 400)  # was 25
             v1_y = random.randint(100, self.window_height - 100)
@@ -129,3 +129,8 @@ class Simulator:
         light = Light([l_x, l_y])
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
+
+    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos):
+        vehicle = Attacker(veh_pos, veh_angle)
+        light = Light(light_pos)
+        return self.run_simulation(iteration, graphics, vehicle, light)
