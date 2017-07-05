@@ -50,7 +50,7 @@ net.randomize_network()
 net.set_all_inputs(inputs)
 net.set_all_targets(targets)
 
-# set the percentage of data to learn on 80% in this case
+# set the percentage of data to learn on. 80% in this case
 length = len(inputs)
 learn_end_point = int(length * .8)
 
@@ -63,7 +63,12 @@ net.layers[1].set_activation_type('tanh')
 net.layers[2].set_activation_type('tanh')
 
 # train network
-net.learn(epochs=125, show_epoch_results=True, random_testing=False)
+net.learn(epochs=100, show_epoch_results=True, random_testing=False)
 
 print 'Testing the MSE'
 print net.test()
+
+print 'Size of all the data= ', len(inputs)
+print net.get_test_range()
+
+print net.validate()
