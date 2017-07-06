@@ -1,5 +1,5 @@
-from pyneurgen.recurrent import NARXRecurrent
-from pyneurgen.neuralnet import NeuralNet
+import pyrenn as pr
+import numpy as np
 from Simulator import Simulator
 
 iterations = 300  # number of iterations to run simulation for
@@ -22,53 +22,10 @@ for i in range(0, len(v.motor_left)):
 print inputs
 print targets
 
-# Set number of nodes
-input_nodes = 4
-hidden_nodes = [5, 5]
-output_nodes = 2
-
-# Set params
-output_order = 5 # The delay of the network
-incoming_weight_from_output = .6
-input_order = 2  # The number of time steps in the past
-incoming_weight_from_input = .4
 
 
-# Intialize the NARX network
-net = NeuralNet()
-net.init_layers(input_nodes, hidden_nodes, output_nodes,
-    NARXRecurrent(
-        output_order,
-        incoming_weight_from_output,
-        input_order,
-        incoming_weight_from_input))
+layers = [4, 10, 10, 2]
+output_delay = [[1, 2, 3, 4]]
+internal_delay = [1]
+net = pr.CreateNN(layers, dIntern=internal_delay, dOut=output_delay)
 
-# random initialize the network weights
-net.randomize_network()
-
-# set inputs and targets
-net.set_all_inputs(inputs)
-net.set_all_targets(targets)
-
-# set the percentage of data to learn on. 80% in this case
-length = len(inputs)
-learn_end_point = int(length * .8)
-
-# set the test data
-net.set_learn_range(0, learn_end_point)
-net.set_test_range(learn_end_point + 1, length - 1)
-
-# set activation function
-net.layers[1].set_activation_type('tanh')
-net.layers[2].set_activation_type('tanh')
-
-# train network
-net.learn(epochs=100, show_epoch_results=True, random_testing=False)
-
-print 'Testing the MSE'
-print net.test()
-
-print 'Size of all the data= ', len(inputs)
-print net.get_test_range()
-
-print net.validate()
