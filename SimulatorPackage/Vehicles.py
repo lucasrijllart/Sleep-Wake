@@ -94,7 +94,7 @@ class Attacker(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 0.5
+        self.dt = 1
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
@@ -129,8 +129,6 @@ class Attacker(pygame.sprite.Sprite):
         vc = (self.wheel_l + self.wheel_r) / 2  # velocity center
         va = (self.wheel_r - self.wheel_l) / (2 * self.radius)  # velocity average
 
-        self.dt = min(200 / (vc ** 2 + 1), 2)
-
         # print('pos-1: ', self.pos[-1])
         self.pos.append([self.pos[-1][0] - self.dt * vc * math.sin(self.bearing[t-1]),  # changed top to sin and bottom to cos and it worked
                          self.pos[-1][1] - self.dt * vc * math.cos(self.bearing[t-1])])  # update position
@@ -151,10 +149,12 @@ class Attacker(pygame.sprite.Sprite):
         # calculate square distance to light
         distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
         distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
+        distance_l = 1 / (distance_l - 1) ** 2
+        distance_r = 1 / (distance_r - 1) ** 2
         # print('dl:', distance_l, 'dr:', distance_r)
 
         # calculate sensor intensity
-        sensor_l, sensor_r = [self.sensor_gain / distance_l, self.sensor_gain / distance_r]
+        sensor_l, sensor_r = [self.sensor_gain * distance_l, self.sensor_gain * distance_r]
         self.sensor_left.append(sensor_l)
         self.sensor_right.append(sensor_r)
         # print('sl:', sensor_l, 'sr:', sensor_r)

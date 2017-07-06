@@ -1,6 +1,10 @@
 from pyneurgen.recurrent import NARXRecurrent
 from pyneurgen.neuralnet import NeuralNet
 from Simulator import Simulator
+from GA import GA
+import random
+
+GA(graphics=True).run([300, 200], random.randint(0, 360), [1100, 600])
 
 iterations = 300  # number of iterations to run simulation for
 show_graphics = True  # True shows graphical window, False doesn't
@@ -71,4 +75,3 @@ print net.test()
 print 'Size of all the data= ', len(inputs)
 print net.get_test_range()
 
-print net.validate()

@@ -6,19 +6,13 @@ import math
 import matplotlib.pyplot as plt
 
 
-def _init_pool(individuals):
-    pool = []
-    for i in range(0, individuals):
-        ind = [random.randint(0, 20) for x in range(0, 6)]
-        pool.append(ind)
-    return pool
 
 
-def _mutate(ind, mutation_rate):
-    for i in range(0, len(ind)):
-        if random.random() < mutation_rate:
-            ind[i] = random.randint(0, 20)
-    return ind
+
+
+
+
+
 
 
 class GA:
@@ -28,22 +22,32 @@ class GA:
 
         self.individual_reached_light = [False]
         self.sim = Simulator()
+        self.genome_scale = 100
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
         self.light = None
         self.iterations = None
 
-    def _perform_crossover(self, indwin, indlos, indwinfit, crossover_rate, mutation_rate):
+    def _init_pool(self, individuals):
+        pool = []
+        for i in range(0, individuals):
+            ind = [random.randint(0, self.genome_scale) for x in range(0, 6)]
+            pool.append(ind)
+        return pool
+
+    def _mutate(self, ind, mutation_rate):
+        for i in range(0, len(ind)):
+            if random.random() < mutation_rate:
+                ind[i] += (random.gauss(0, 1) * self.genome_scale) / 100
+        return ind
+
+    def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
         for i in range(0, len(indwin)):
             if random.random() < crossover_rate:
                 indlos[i] = indwin[i]
-        # mutate until fitter or counter
-        counter = 0
-        while indwinfit > self._get_fitness(indlos) and counter > 2000:
-            indlos = _mutate(indlos, mutation_rate)
-            counter += 1
-            print(counter)
+        # mutate
+        indlos = self._mutate(indlos, mutation_rate)
         return [indwin, indlos]
 
     def _get_all_fitnesses(self, pool):
@@ -66,34 +70,34 @@ class GA:
         if vehicle.reached_light:
             self.individual_reached_light.append(True)
 
+        '''
         # calculate fitness with 1/distance
         distance = 0
         for step in vehicle.pos:
             distance += math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2)
         fitness = 1 / distance
-
         '''
+
         # calculate fitness with average distance
         distances = []
         for step in vehicle.pos:
-            distances.append(math.sqrt((step[0] - light_x) ** 2 + (step[1] - light_y) ** 2))
+            distances.append(math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2))
         fitness = 0
         for distance in distances:
             fitness += distance
-        fitness = fitness / len(distances)
-        fitness = 1 / fitness
-        '''
+        fitness /= len(distances)
+        fitness = 1000 / fitness
 
-        return fitness*100000
+        return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = self._get_fitness(individual1)
         fitness2 = self._get_fitness(individual2)
 
         if fitness1 >= fitness2:
-            return self._perform_crossover(individual1, individual2, fitness1, crossover_rate, mutation_rate)
+            return self._perform_crossover(individual1, individual2, crossover_rate, mutation_rate)
         else:
-            ind2, ind1 = self._perform_crossover(individual2, individual1, fitness2, crossover_rate, mutation_rate)
+            ind2, ind1 = self._perform_crossover(individual2, individual1, crossover_rate, mutation_rate)
             return [ind1, ind2]
 
     def _run_winner(self, graphics, ind):
@@ -105,7 +109,7 @@ class GA:
         self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
-        pool = _init_pool(individuals)
+        pool = self._init_pool(individuals)
         all_fitness = self._get_all_fitnesses(pool)
         print(all_fitness)
         best_ind = [0, 0, 0]
