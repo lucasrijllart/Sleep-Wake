@@ -94,13 +94,13 @@ class Attacker(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 100
+        self.dt = 80
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [float(angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         # self.sensor_gain = 1  # amplify sensor signal
-        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 0, 0, 0  # amplify motor signal
+        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 8, 0, 8  # amplify motor signal
         self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
         self.reached_light = False
 

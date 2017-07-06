@@ -135,7 +135,6 @@ class GA:
                 best_fit.append(best_ind[2])
 
         print '\nBest fitness: ' + str(best_fit[-1]) + str(best_ind)
-        print 'Reached light: ' + str(self.individual_reached_light[-1])
         self._run_winner(self.graphics, best_ind)
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()

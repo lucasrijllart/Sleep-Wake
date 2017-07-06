@@ -4,14 +4,15 @@ from Simulator import Simulator
 from GA import GA
 import random
 
-GA(graphics=True).run([300, 300], random.randint(0, 360), [900, 500])
+
+GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
 iterations = 300  # number of iterations to run simulation for
 show_graphics = True  # True shows graphical window, False doesn't
 
-random_vehicle_pos = True
-random_vehicle_angle = True
-random_light_pos = True
+random_vehicle_pos = False
+random_vehicle_angle = False
+random_light_pos = False
 
 # for x in range(0, 1):
 sim = Simulator()
@@ -75,3 +76,5 @@ print net.test()
 print 'Size of all the data= ', len(inputs)
 print net.get_test_range()
 
+net.set_all_inputs(inputs)
+print net._feed_forward()

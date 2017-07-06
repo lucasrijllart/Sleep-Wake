@@ -89,10 +89,6 @@ class Simulator:
                 pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
                 time.sleep(0.03)
-
-            # remove this to let vehicle keep going
-            if vehicle.reached_light:
-                break
             self.number_of_iterations += 1
 
         if graphics:
@@ -121,8 +117,8 @@ class Simulator:
             l_x = random.randint(400, self.window_width - 400)
             l_y = random.randint(100, self.window_height - 100)
         else:
-            l_x = 200
-            l_y = 400
+            l_x = 1100
+            l_y = 600
 
         # create sprites
         vehicle = Attacker([v1_x, v1_y], v1_angle)
