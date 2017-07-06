@@ -6,15 +6,6 @@ import math
 import matplotlib.pyplot as plt
 
 
-
-
-
-
-
-
-
-
-
 class GA:
 
     def __init__(self, graphics=False):
@@ -22,7 +13,7 @@ class GA:
 
         self.individual_reached_light = [False]
         self.sim = Simulator()
-        self.genome_scale = 100
+        self.genome_scale = 8
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
@@ -32,14 +23,14 @@ class GA:
     def _init_pool(self, individuals):
         pool = []
         for i in range(0, individuals):
-            ind = [random.randint(0, self.genome_scale) for x in range(0, 6)]
+            ind = [random.uniform(-self.genome_scale, self.genome_scale) for x in range(0, 6)]
             pool.append(ind)
         return pool
 
-    def _mutate(self, ind, mutation_rate):
+    def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
         for i in range(0, len(ind)):
             if random.random() < mutation_rate:
-                ind[i] += (random.gauss(0, 1) * self.genome_scale) / 100
+                ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
         return ind
 
     def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
@@ -149,7 +140,7 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_random(self, individuals=20, generations=5, crossover_rate=0.7, mutation_rate=0.3):
+    def run_random(self, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         # create random values
         self.start_x = random.randint(25, self.sim.window_width - 25)
         self.start_y = random.randint(25, self.sim.window_height - 25)
@@ -164,7 +155,7 @@ class GA:
 
         self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=20, generations=5, crossover_rate=0.7, mutation_rate=0.3):
+    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

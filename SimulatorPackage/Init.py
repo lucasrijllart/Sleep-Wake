@@ -4,7 +4,7 @@ from Simulator import Simulator
 from GA import GA
 import random
 
-GA(graphics=True).run([300, 200], random.randint(0, 360), [1100, 600])
+GA(graphics=True).run([300, 300], random.randint(0, 360), [900, 500])
 
 iterations = 300  # number of iterations to run simulation for
 show_graphics = True  # True shows graphical window, False doesn't
