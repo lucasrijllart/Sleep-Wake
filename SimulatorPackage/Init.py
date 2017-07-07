@@ -74,3 +74,6 @@ print net.predict(x)
 # check this methods
 #pr.RTRL()
 #pr.prepare_data()
+
+
+
