@@ -1,4 +1,3 @@
-import pyrenn as pr
 import numpy as np
 from narx import narx
 from Simulator import Simulator
@@ -40,17 +39,19 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ve
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
 #Param
-vehicle_runs = 5
+vehicle_runs = 3
 vehicle_iter = 300
 input_delay = 5
 output_delay = 5
 net_max_iter = 100
+test_runs = 1
 
 
 # collect data for narx and pre-process data
 data = collect_random_data(vehicle_runs=vehicle_runs, iterations=vehicle_iter)
 inputs_list, targets_list = pre_processing(data)
-data = collect_random_data(vehicle_runs=1)
+#test runs and preprocess data
+data = collect_random_data(vehicle_runs=test_runs)
 test_input, test_target = pre_processing(data)
 
 # separation into training and testing
@@ -77,11 +78,11 @@ i = np.array(range(0, len(real_left)))
 MSE1 = [(predictions_left[it] - real_left[it]) ** 2 / len(predictions_left) for it in range(0, len(predictions_left))]
 MSE2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) for it in range(0, len(predictions_right))]
 
-# TODO: Add format() to all values because it spams the window, and also change the title of the window that doesnt work
+# TODO: Add format() to all values because it spams the window
 
 plt.figure(1)
-plt.title('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
-          str(input_delay) + ':' + str(output_delay))
+plt.suptitle('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
+           str(input_delay) + ':' + str(output_delay))
 plt.subplot(221)
 plt.title('Left sensor MSE. Mean:' + str([item / len(MSE1) for item in MSE1]))
 plt.plot(range(0, len(MSE1)), MSE1)
