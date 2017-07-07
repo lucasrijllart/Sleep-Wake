@@ -94,13 +94,13 @@ class Attacker(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 1
+        self.dt = 80
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [pos]  # xy position of vehicle
         self.bearing = [float(angle * math.pi / 180)]  # angle of vehicle (converted to rad)
-        self.sensor_gain = 100  # amplify sensor signal
-        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 10, 0, 10  # amplify motor signal
+        # self.sensor_gain = 1  # amplify sensor signal
+        self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 8, 0, 8  # amplify motor signal
         self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
         self.reached_light = False
 
@@ -149,19 +149,19 @@ class Attacker(pygame.sprite.Sprite):
         # calculate square distance to light
         distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
         distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
-        distance_l = 1 / (distance_l - 1) ** 2
-        distance_r = 1 / (distance_r - 1) ** 2
+        sensor_l = 10 / (distance_l + 1)
+        sensor_r = 10 / (distance_r + 1)
         # print('dl:', distance_l, 'dr:', distance_r)
 
         # calculate sensor intensity
-        sensor_l, sensor_r = [self.sensor_gain * distance_l, self.sensor_gain * distance_r]
+        # sensor_l, sensor_r = [self.sensor_gain * distance_l, self.sensor_gain * distance_r]
         self.sensor_left.append(sensor_l)
         self.sensor_right.append(sensor_r)
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain_ll) + (sensor_r * self.motor_gain_rl) + self.bias_l,
-                                      (sensor_r * self.motor_gain_rr) + (sensor_l * self.motor_gain_lr) + self.bias_r]
+        self.wheel_l, self.wheel_r = [(sensor_l * self.motor_gain_ll) + (sensor_r * self.motor_gain_rl) + self.bias_l/80,
+                                      (sensor_r * self.motor_gain_rr) + (sensor_l * self.motor_gain_lr) + self.bias_r/80]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
