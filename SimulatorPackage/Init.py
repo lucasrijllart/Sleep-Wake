@@ -76,7 +76,3 @@ print net.predict(x)
 #pr.RTRL()
 #pr.prepare_data()
 
-
-
-net.set_all_inputs(inputs)
-print net._feed_forward()
