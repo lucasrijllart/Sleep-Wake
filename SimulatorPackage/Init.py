@@ -7,13 +7,13 @@ import random
 import matplotlib.pyplot as plt
 
 
-def pre_processing(data):
+def pre_processing(raw_data):
     new_inputs = []
     new_targets = []
-    for t in range(0, len(data[0])):
-        for vehicle in range(0, len(data)):
-            new_inputs.append(np.transpose(np.array(data[vehicle][t])))
-            new_targets.append(np.transpose(np.array(data[vehicle][t][-2:])))  # extracting targets from data and adding to new list (transposed)
+    for t in range(0, len(raw_data[0])):
+        for vehicle in range(0, len(raw_data)):
+            new_inputs.append(np.transpose(np.array(raw_data[vehicle][t])))
+            new_targets.append(np.transpose(np.array(raw_data[vehicle][t][-2:])))  # extracting targets from data and adding to new list (transposed)
     return [new_inputs, new_targets]
 
 
@@ -39,49 +39,65 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ve
 
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
+#Param
+vehicle_runs = 5
+vehicle_iter = 300
+input_delay = 5
+output_delay = 5
+net_max_iter = 100
+
 
 # collect data for narx and pre-process data
-data = collect_random_data(vehicle_runs=5, iterations=1000)
+data = collect_random_data(vehicle_runs=vehicle_runs, iterations=vehicle_iter)
 inputs_list, targets_list = pre_processing(data)
+data = collect_random_data(vehicle_runs=1)
+test_input, test_target = pre_processing(data)
 
 # separation into training and testing
-train_input = np.transpose(np.array(inputs_list[:60]))
-train_target = np.transpose(np.array(targets_list[:60]))
-test_input = np.transpose(np.array(inputs_list[-40:]))
-test_target = np.transpose(np.array(targets_list[-40:]))
+train_input = np.transpose(np.array(inputs_list))
+train_target = np.transpose(np.array(targets_list))
+test_input = np.transpose(np.array(test_input))
+test_target = np.transpose(np.array(test_target))
 
 # create narx network
-net = narx(input_delay=10, output_delay=10)
+net = narx(input_delay=input_delay, output_delay=output_delay)
 
 # train network
-net.train(train_input, train_target, verbose=True, max_iter=400)
+net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
 
 # extract predictions and compare with test
 predictions = net.predict(test_input)
-print predictions.shape
-predictions1 = predictions[0]
-predictions2 = predictions[1]
-test_target1 = np.array(test_target)[0]
-print test_target1.shape
-test_target2 = np.array(test_target)[1]
-i = np.array(range(0, len(test_target1)))
+predictions_left = predictions[0]
+predictions_right = predictions[1]
+real_left = np.array(test_target)[0]
+real_right = np.array(test_target)[1]
+i = np.array(range(0, len(real_left)))
 
-MSE1 = []
-for it in range(0, len(predictions1)):
-    print (predictions1[it] - test_target1[it]) ** 2 / len(predictions1)
-    MSE1.append((predictions1[it] - test_target1[it]) ** 2 / len(predictions1))
-print MSE1
+# calculate mean squared error
+MSE1 = [(predictions_left[it] - real_left[it]) ** 2 / len(predictions_left) for it in range(0, len(predictions_left))]
+MSE2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) for it in range(0, len(predictions_right))]
 
-#MSE2 = [(predictions2[i] - test_target2[i])**2 / 2 for i in len(predictions1)]
+# TODO: Add format() to all values because it spams the window, and also change the title of the window that doesnt work
 
 plt.figure(1)
+plt.title('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
+          str(input_delay) + ':' + str(output_delay))
+plt.subplot(221)
+plt.title('Left sensor MSE. Mean:' + str([item / len(MSE1) for item in MSE1]))
 plt.plot(range(0, len(MSE1)), MSE1)
-print i.shape
-print test_target1.shape
-print predictions1.shape
 
-plt.figure(2)
-plt.plot(i, test_target1, 'b', i, predictions1, 'r')
+plt.subplot(222)
+plt.title('Right sensor MSE. Mean:' + str([item / len(MSE2) for item in MSE2]))
+plt.plot(range(0, len(MSE2)), MSE2)
+
+plt.subplot(223)
+plt.title('Left sensor values b=real, r=pred')
+plt.plot(i, real_left, 'b', i, predictions_left, 'r')
+
+plt.subplot(224)
+plt.title('Right sensor values b=real, r=pred')
+plt.plot(i, real_right, 'b', i, predictions_right, 'r')
+
 plt.show()
 
 
