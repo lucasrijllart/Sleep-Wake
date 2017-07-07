@@ -1,9 +1,9 @@
-from pyneurgen.recurrent import NARXRecurrent
-from pyneurgen.neuralnet import NeuralNet
+import pyrenn as pr
+import numpy as np
+from narx import narx
 from Simulator import Simulator
 from GA import GA
 import random
-import numpy
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, vehicle_runs=10, iterations=1000, graphics=False, gamma=0.2):
@@ -34,56 +34,43 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ve
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
 
+
+net = narx()
+
+
 # collect data for narx
 inputs, targets = collect_random_data(vehicle_runs=3)
 
-'''
-# Set number of nodes
-input_nodes = 4
-hidden_nodes = [5, 5]
-output_nodes = 2
 
-# Set params
-output_order = 5 # The delay of the network
-incoming_weight_from_output = .6
-input_order = 2  # The number of time steps in the past
-incoming_weight_from_input = .4
+#rotate arrays, each row in an input element, each column is a sample
+inputs_array = np.array(inputs_list)
+inputs_array = np.rot90(inputs_array, 1)
+targets_array = np.array(targets_list)
+targets_array = np.rot90(targets_array, 1)
+x = [inputs_array[i][-1] for i in range(0, 4)]
+x = np.array([x])
+x = np.rot90(x, 1)
+r, c = inputs_array.shape
+#remove last column to use as test
+inputs_array = inputs_array[:, 1:c-1]
+print inputs_array
+y = [targets_array[i][-1] for i in range(0, 2)]
+y = np.array(y)
+r, c = targets_array.shape
+targets_array = targets_array[:, 1:c-1]
+net.train(inputs_array, targets_array, verbose=True)
+print net.predict(x)
+# layers = [4, 10, 10, 2]
+# output_delay = [1, 2, 3, 4]
+# input_delay = [1, 2, 3, 4]
+# net = pr.CreateNN(layers, dIn=input_delay, dOut=output_delay)
+#
+# net = pr.train_LM(inputs_array, targets_array, net, 100, verbose=True)
+# print 'test input ' + str(x)
+# print 'test target ' + str(y)
+#
+# print pr.NNOut(x, net)
 
+# check this methods
+#pr.prepare_data()
 
-# Intialize the NARX network
-net = NeuralNet()
-net.init_layers(input_nodes, hidden_nodes, output_nodes,
-    NARXRecurrent(
-        output_order,
-        incoming_weight_from_output,
-        input_order,
-        incoming_weight_from_input))
-
-# random initialize the network weights
-net.randomize_network()
-
-# set inputs and targets
-net.set_all_inputs(inputs)
-net.set_all_targets(targets)
-
-# set the percentage of data to learn on. 80% in this case
-length = len(inputs)
-learn_end_point = int(length * .8)
-
-# set the test data
-net.set_learn_range(0, learn_end_point)
-net.set_test_range(learn_end_point + 1, length - 1)
-
-# set activation function
-net.layers[1].set_activation_type('tanh')
-net.layers[2].set_activation_type('tanh')
-
-# train network
-net.learn(epochs=100, show_epoch_results=True, random_testing=False)
-
-print 'Testing the MSE'
-print net.test()
-
-print 'Size of all the data= ', len(inputs)
-print net.get_test_range()
-'''

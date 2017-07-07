@@ -37,7 +37,7 @@ def show_sensors_motors(screen, vehicle):
 
 
 def show_graph(vehicle):
-    i = range(0, len(vehicle.sensor_left))
+    i = range(1, len(vehicle.sensor_left))
 
     plt.plot(i, vehicle.sensor_left, 'r', i, vehicle.sensor_right, 'y', i, vehicle.motor_left, 'g',
              i, vehicle.motor_right, 'b')
