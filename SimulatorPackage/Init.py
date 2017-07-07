@@ -3,30 +3,41 @@ from pyneurgen.neuralnet import NeuralNet
 from Simulator import Simulator
 from GA import GA
 import random
+import numpy
 
 
-GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
+def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, vehicle_runs=10, iterations=1000, graphics=False, gamma=0.2):
+    if vehicle_pos is None:
+        vehicle_pos = [300, 300]
+    if vehicle_angle is None:
+        vehicle_angle = random.randint(0, 360)
+    if light_pos is None:
+        light_pos = [1100, 600]
+    # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
+    data = []
+    targets = []
+    sim = Simulator()
+    for run in range(0, vehicle_runs):
 
-iterations = 300  # number of iterations to run simulation for
-show_graphics = True  # True shows graphical window, False doesn't
+        v = sim.init_simulation(iterations+1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma)
+        vehicle_data_in_t = []
+        target_data_in_t = []
+        for t in range(0, iterations):
+            vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
+            target_data_in_t.append([v.sensor_left[t], v.sensor_right[t]])
+        data.append(vehicle_data_in_t)
+        targets.append(target_data_in_t)
+    print 'Collected data from ' + str(vehicle_runs) + ' vehicles over ' + str(iterations) + ' iterations'
+    return [data, targets]
 
-random_vehicle_pos = False
-random_vehicle_angle = False
-random_light_pos = False
 
-# for x in range(0, 1):
-sim = Simulator()
-v = sim.init_simulation_random(iterations, show_graphics, random_vehicle_pos, random_vehicle_angle, random_light_pos)
+# GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
+
 
 # collect data for narx
-inputs = []
-targets = []
-for i in range(0, len(v.motor_left)):
-    inputs.append([v.sensor_left[i], v.sensor_right[i], v.motor_left[i], v.motor_right[i]])
-    targets.append([v.sensor_left[i], v.sensor_right[i]])
-print inputs
-print targets
+inputs, targets = collect_random_data(vehicle_runs=3)
 
+'''
 # Set number of nodes
 input_nodes = 4
 hidden_nodes = [5, 5]
@@ -75,6 +86,4 @@ print net.test()
 
 print 'Size of all the data= ', len(inputs)
 print net.get_test_range()
-
-net.set_all_inputs(inputs)
-print net._feed_forward()
+'''

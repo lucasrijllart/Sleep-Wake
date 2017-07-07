@@ -4,7 +4,7 @@ import pygame
 import math
 import random
 import matplotlib.pyplot as plt
-from Vehicles import Attacker
+from Vehicles import Attacker, RandomMotorVehicle
 from Light import Light
 
 
@@ -103,8 +103,8 @@ class Simulator:
             v1_x = random.randint(400, self.window_width - 400)  # was 25
             v1_y = random.randint(100, self.window_height - 100)
         else:
-            v1_x = 200
-            v1_y = 200
+            v1_x = 300
+            v1_y = 300
 
         print veh_rand_angle
         if veh_rand_angle:  # check if vehicle angle is random
@@ -126,7 +126,10 @@ class Simulator:
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
-    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos):
-        vehicle = Attacker(veh_pos, veh_angle)
+    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, attacker=False):
+        if attacker:
+            vehicle = Attacker(veh_pos, veh_angle)
+        else:
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma)
         light = Light(light_pos)
         return self.run_simulation(iteration, graphics, vehicle, light)
