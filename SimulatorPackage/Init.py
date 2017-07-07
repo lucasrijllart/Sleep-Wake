@@ -4,6 +4,17 @@ from narx import narx
 from Simulator import Simulator
 from GA import GA
 import random
+import matplotlib.pyplot as plt
+
+
+def pre_processing(data):
+    new_inputs = []
+    new_targets = []
+    for t in range(0, len(data[0])):
+        for vehicle in range(0, len(data)):
+            new_inputs.append(np.transpose(np.array(data[vehicle][t])))
+            new_targets.append(np.transpose(np.array(data[vehicle][t][-2:])))  # extracting targets from data and adding to new list (transposed)
+    return [new_inputs, new_targets]
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, vehicle_runs=10, iterations=1000, graphics=False, gamma=0.2):
@@ -15,62 +26,62 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ve
         light_pos = [1100, 600]
     # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
     data = []
-    targets = []
     sim = Simulator()
     for run in range(0, vehicle_runs):
-
         v = sim.init_simulation(iterations+1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma)
         vehicle_data_in_t = []
-        target_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
-            target_data_in_t.append([v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
-        targets.append(target_data_in_t)
     print 'Collected data from ' + str(vehicle_runs) + ' vehicles over ' + str(iterations) + ' iterations'
-    return [data, targets]
+    return data
 
 
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
 
+# collect data for narx and pre-process data
+data = collect_random_data(vehicle_runs=5, iterations=1000)
+inputs_list, targets_list = pre_processing(data)
 
-net = narx()
+# separation into training and testing
+train_input = np.transpose(np.array(inputs_list[:60]))
+train_target = np.transpose(np.array(targets_list[:60]))
+test_input = np.transpose(np.array(inputs_list[-40:]))
+test_target = np.transpose(np.array(targets_list[-40:]))
 
+# create narx network
+net = narx(input_delay=10, output_delay=10)
 
-# collect data for narx
-inputs, targets = collect_random_data(vehicle_runs=3)
+# train network
+net.train(train_input, train_target, verbose=True, max_iter=400)
 
+# extract predictions and compare with test
+predictions = net.predict(test_input)
+print predictions.shape
+predictions1 = predictions[0]
+predictions2 = predictions[1]
+test_target1 = np.array(test_target)[0]
+print test_target1.shape
+test_target2 = np.array(test_target)[1]
+i = np.array(range(0, len(test_target1)))
 
-#rotate arrays, each row in an input element, each column is a sample
-inputs_array = np.array(inputs_list)
-inputs_array = np.rot90(inputs_array, 1)
-targets_array = np.array(targets_list)
-targets_array = np.rot90(targets_array, 1)
-x = [inputs_array[i][-1] for i in range(0, 4)]
-x = np.array([x])
-x = np.rot90(x, 1)
-r, c = inputs_array.shape
-#remove last column to use as test
-inputs_array = inputs_array[:, 1:c-1]
-print inputs_array
-y = [targets_array[i][-1] for i in range(0, 2)]
-y = np.array(y)
-r, c = targets_array.shape
-targets_array = targets_array[:, 1:c-1]
-net.train(inputs_array, targets_array, verbose=True)
-print net.predict(x)
-# layers = [4, 10, 10, 2]
-# output_delay = [1, 2, 3, 4]
-# input_delay = [1, 2, 3, 4]
-# net = pr.CreateNN(layers, dIn=input_delay, dOut=output_delay)
-#
-# net = pr.train_LM(inputs_array, targets_array, net, 100, verbose=True)
-# print 'test input ' + str(x)
-# print 'test target ' + str(y)
-#
-# print pr.NNOut(x, net)
+MSE1 = []
+for it in range(0, len(predictions1)):
+    print (predictions1[it] - test_target1[it]) ** 2 / len(predictions1)
+    MSE1.append((predictions1[it] - test_target1[it]) ** 2 / len(predictions1))
+print MSE1
 
-# check this methods
-#pr.prepare_data()
+#MSE2 = [(predictions2[i] - test_target2[i])**2 / 2 for i in len(predictions1)]
+
+plt.figure(1)
+plt.plot(range(0, len(MSE1)), MSE1)
+print i.shape
+print test_target1.shape
+print predictions1.shape
+
+plt.figure(2)
+plt.plot(i, test_target1, 'b', i, predictions1, 'r')
+plt.show()
+
 
