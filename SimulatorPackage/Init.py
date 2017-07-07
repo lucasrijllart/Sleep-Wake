@@ -2,6 +2,10 @@ import pyrenn as pr
 import numpy as np
 from narx import narx
 from Simulator import Simulator
+from GA import GA
+import random
+
+GA(graphics=True).run([300, 200], random.randint(0, 360), [1100, 600])
 
 iterations = 300  # number of iterations to run simulation for
 show_graphics = False  # True shows graphical window, False doesn't
