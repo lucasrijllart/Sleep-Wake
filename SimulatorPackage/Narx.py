@@ -1,6 +1,7 @@
 import pyrenn as pr
 
-class narx:
+
+class Narx:
 
     def __init__(self, layers=[4, 10, 10, 2], input_delay=5,
                  output_delay=5):
