@@ -17,7 +17,7 @@ def pre_processing(raw_data):
     return [new_inputs, new_targets]
 
 
-def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, vehicle_runs=10, iterations=1000, graphics=False, gamma=0.2):
+def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, runs=10, iterations=1000, graphics=False, gamma=0.2, use_seed=False):
     if vehicle_pos is None:
         vehicle_pos = [300, 300]
     if vehicle_angle is None:
@@ -27,33 +27,34 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ve
     # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
     data = []
     sim = Simulator()
-    for run in range(0, vehicle_runs):
-        v = sim.init_simulation(iterations+1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma)
+    for run in range(0, runs):
+        v = sim.init_simulation(iterations+1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, use_seed)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
-    print 'Collected data from ' + str(vehicle_runs) + ' vehicles over ' + str(iterations) + ' iterations'
+    print 'Collected data from ' + str(runs) + ' vehicles over ' + str(iterations) + ' iterations'
     return data
 
 
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
-#Param
-vehicle_runs = 10
-vehicle_iter = 300
-input_delay = 5
-output_delay = 5
-net_max_iter = 100
+# Parameters
+vehicle_runs = 2
+vehicle_iter = 1000
 test_runs = 1
+
+input_delay = 15
+output_delay = 15
+net_max_iter = 100
 
 
 # collect data for narx and pre-process data
-data = collect_random_data(vehicle_runs=vehicle_runs, iterations=vehicle_iter)
+data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
 inputs_list, targets_list = pre_processing(data)
 
 # test runs and preprocess data
-data = collect_random_data(vehicle_runs=test_runs)
+data = collect_random_data(runs=test_runs, use_seed=True, vehicle_angle=100)
 test_input, test_target = pre_processing(data)
 
 # separation into training and testing
@@ -82,7 +83,7 @@ MSE2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) f
 
 plt.figure(1)
 plt.suptitle('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
-           str(input_delay) + ':' + str(output_delay))
+             str(input_delay) + ':' + str(output_delay) + ' net_iter:' + str(net_max_iter))
 plt.subplot(221)
 plt.title('Left sensor MSE. Mean:' + '%.4E' % Decimal(str(np.mean(MSE1))))
 plt.plot(range(0, len(MSE1)), MSE1)

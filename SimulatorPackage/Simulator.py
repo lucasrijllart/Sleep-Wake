@@ -37,7 +37,7 @@ def show_sensors_motors(screen, vehicle):
 
 
 def show_graph(vehicle):
-    i = range(1, len(vehicle.sensor_left))
+    i = range(0, len(vehicle.sensor_left))
 
     plt.plot(i, vehicle.sensor_left, 'r', i, vehicle.sensor_right, 'y', i, vehicle.motor_left, 'g',
              i, vehicle.motor_right, 'b')
@@ -126,10 +126,10 @@ class Simulator:
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
-    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, attacker=False):
+    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, use_seed=False, attacker=False):
         if attacker:
             vehicle = Attacker(veh_pos, veh_angle)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
         light = Light(light_pos)
         return self.run_simulation(iteration, graphics, vehicle, light)
