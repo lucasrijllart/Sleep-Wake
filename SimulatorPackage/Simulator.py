@@ -126,7 +126,7 @@ class Simulator:
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
-    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, use_seed=False, attacker=False):
+    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, use_seed=None, attacker=False):
         if attacker:
             vehicle = Attacker(veh_pos, veh_angle)
         else:

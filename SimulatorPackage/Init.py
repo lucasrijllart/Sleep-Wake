@@ -17,7 +17,7 @@ def pre_processing(raw_data):
     return [new_inputs, new_targets]
 
 
-def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, runs=10, iterations=1000, graphics=False, gamma=0.2, use_seed=False):
+def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, runs=10, iterations=1000, graphics=False, gamma=0.2, seed=None):
     if vehicle_pos is None:
         vehicle_pos = [300, 300]
     if vehicle_angle is None:
@@ -28,7 +28,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
     data = []
     sim = Simulator()
     for run in range(0, runs):
-        v = sim.init_simulation(iterations+1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, use_seed)
+        v = sim.init_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -40,21 +40,22 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
 # GA(graphics=True).run([300, 300], random.randint(0, 360), [1100, 600])
 
 # Parameters
-vehicle_runs = 2
-vehicle_iter = 1000
+vehicle_runs = 4
+vehicle_iter = 400
 test_runs = 1
+test_iter = 400
+test_seed = 200  # 100
 
 input_delay = 15
 output_delay = 15
-net_max_iter = 100
-
+net_max_iter = 200
 
 # collect data for narx and pre-process data
 data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
 inputs_list, targets_list = pre_processing(data)
 
 # test runs and preprocess data
-data = collect_random_data(runs=test_runs, use_seed=True, vehicle_angle=100)
+data = collect_random_data(runs=test_runs, seed=test_seed, vehicle_angle=100, iterations=test_iter, graphics=False)
 test_input, test_target = pre_processing(data)
 
 # separation into training and testing

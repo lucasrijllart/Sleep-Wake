@@ -4,7 +4,7 @@ import random
 
 
 class RandomMotorVehicle(pygame.sprite.Sprite):
-    def __init__(self, start_pos, start_angle, gamma, use_seed):
+    def __init__(self, start_pos, start_angle, gamma, seed):
         # pygame init
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load('images/vehicle.png')  # image of vehicle
@@ -16,8 +16,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 
         # vehicle logic init
         self.gamma = gamma
-        if use_seed:
-            random.seed(100)
+        if seed is not None:
+            random.seed(seed)
         self.dt = 40  # 80
         self.wheel_l, self.wheel_r = random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05)  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
@@ -71,8 +71,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [self.wheel_l + 0.08 * (-self.wheel_l + random.uniform(-1, 1)),
-                                      self.wheel_r + 0.08 * (-self.wheel_r + random.uniform(-1, 1))]
+        self.wheel_l, self.wheel_r = [self.wheel_l + 0.05 * (-self.wheel_l + random.uniform(-1, 1)),
+                                      self.wheel_r + 0.05 * (-self.wheel_r + random.uniform(-1, 1))]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
