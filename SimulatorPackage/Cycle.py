@@ -87,7 +87,7 @@ class Cycle:
 
         input_delay = 5
         output_delay = 5
-        net_max_iter = 100
+        net_max_iter = 50
 
         # collect data for NARX and testing and pre-process data
         data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
