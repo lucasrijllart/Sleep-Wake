@@ -31,6 +31,10 @@ class GA:
         for i in range(0, len(ind)):
             if random.random() < mutation_rate:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
+                if ind[i] > self.genome_scale:
+                    ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
+                if ind[i] < -self.genome_scale:
+                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
