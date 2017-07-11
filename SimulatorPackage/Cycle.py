@@ -4,6 +4,7 @@ from Simulator import Simulator
 from Narx import Narx
 import matplotlib.pyplot as plt
 from decimal import Decimal
+from GA import GA
 
 
 def pre_process(raw_data):
@@ -131,7 +132,7 @@ class Cycle:
 
     def sleep(self):
         # run GA and find best brain to give to testing
-
+        ga = GA
         pass
 
     def wake_testing(self):

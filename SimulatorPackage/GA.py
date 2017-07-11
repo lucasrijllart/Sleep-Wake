@@ -87,31 +87,42 @@ class GA:
 
             sensor_log = [[]]
 
-            for it in range(0, timesteps): # loop through the time steps
+            #NEED TO CREATE INITIAL NARX INPUT DATA
+            next_input = self.date[:, -1]
+            for it in range(0, self.timesteps): # loop through the time steps
                 # 1. predict next sensory output
-                prediction = self.net.predict(self.data)
+                prediction = self.net.predict(next_input, pre_inputs=self.data, pre_outputs=self.data[2:3])
                 print 'prediction: ' + str(prediction)
 
+                # concatenate to the full data
+                self.data = np.concatenate((self.data, next_input), axis=1)
+
                 # 2. log predicted sensory information to list (used for fitness)
+                #log the output of the sensors
+                #predictions need to be in the form [[], []]
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
                 print 'sensor_log: ' + str(sensor_log)
 
-                # 3. feed sensors to the brain to get motor information
-                sensor_l, sensor_r = prediction
-                print 'sensors: ' + str(sensor_l) + ' ' + str(sensor_r)
+                # 3. feed it to the brain to get motor information
+                sensor_l = prediction[0]
+                sensor_r = prediction[1]
                 wheel_l, wheel_r = [(sensor_l * ind[0]) + (sensor_r * ind[3]) + ind[4] / 80,
                                     (sensor_r * ind[2]) + (sensor_l * ind[1]) + ind[5] / 80]
 
                 # 4. add this set of data to the input of the prediction
                 next_input = [[wheel_l], [wheel_r], [sensor_l], [sensor_r]]
-                # concatenate to the full data
-                self.data = np.concatenate((self.data, next_input), axis=1)
+
 
                 # loop back to 1 until reached timestep (50)
 
+
             # calculate fitness by taking average of sensory predictions
-            fitness = (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
+            total = sum(sensor_log[0]) + sum(sensor_log[1])
+            # devide by number of records/timesteps
+            fitness = total/len(sensor_log[0])
             return fitness
+
+
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = self._get_fitness(individual1)
@@ -171,13 +182,14 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_offline(self, narx, data, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+    def run_offline(self, narx, data, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3, timesteps=20):
         self.net = narx
         self.data = data
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
         self.light = Light(light_pos)
+        self.timesteps = timesteps
 
         start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
         print 'vehicle available frames: ' + str(start_light_dist)
