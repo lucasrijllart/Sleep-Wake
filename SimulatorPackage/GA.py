@@ -1,5 +1,5 @@
 from Simulator import Simulator
-from Vehicles import Attacker
+from Vehicles import BrainVehicle
 from Light import Light
 import random
 import math
@@ -12,13 +12,15 @@ class GA:
         self.graphics = graphics
 
         self.individual_reached_light = [False]
-        self.sim = Simulator()
+        self.sim = None
         self.genome_scale = 8
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
         self.light = None
         self.iterations = None
+
+        self.net = None  # NARX network used to predict values for fitness
 
     def _init_pool(self, individuals):
         pool = []
@@ -56,34 +58,36 @@ class GA:
 
     def _get_fitness(self, ind):
         # create sprites
-        vehicle = Attacker([self.start_x, self.start_y], self.start_a)
+        vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
         vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
 
-        # create Simulation
-        vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
+        if self.net is None:
+            # create Simulation
+            vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
 
-        if vehicle.reached_light:
-            self.individual_reached_light.append(True)
+            if vehicle.reached_light:
+                self.individual_reached_light.append(True)
 
-        '''
-        # calculate fitness with 1/distance
-        distance = 0
-        for step in vehicle.pos:
-            distance += math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2)
-        fitness = 1 / distance
-        '''
+            # calculate fitness with average distance
+            distances = []
+            for step in vehicle.pos:
+                distances.append(math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2))
+            fitness = 0
+            for distance in distances:
+                fitness += distance
+            fitness /= len(distances)
+            fitness = 1000 / fitness
 
-        # calculate fitness with average distance
-        distances = []
-        for step in vehicle.pos:
-            distances.append(math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2))
-        fitness = 0
-        for distance in distances:
-            fitness += distance
-        fitness /= len(distances)
-        fitness = 1000 / fitness
-
-        return fitness
+            return fitness
+        else:  # if offline, get fitness by using predictions
+            pass
+            # 1. predict next sensory output
+            # 2. add sensory information to list (which we will use for fitness)
+            # 3. feed it to the brain
+            # 4. get the motor commands that the sensory information would translate to
+            # 5. add this set of data to the input of the prediction
+            # loop back to 1 until reached timestep (50)
+            # calculate fitness by taking average of sensory predictions
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = self._get_fitness(individual1)
@@ -98,7 +102,7 @@ class GA:
     def _run_winner(self, graphics, ind):
         print 'Running: ' + str(ind) + str(self._get_fitness(ind[1]))
         ind = ind[1]
-        vehicle = Attacker([self.start_x, self.start_y], self.start_a)
+        vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
         vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
         # create Simulation
         self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
@@ -143,16 +147,14 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_random(self, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
-        # create random values
-        self.start_x = random.randint(25, self.sim.window_width - 25)
-        self.start_y = random.randint(25, self.sim.window_height - 25)
-        self.start_a = random.randint(0, 360)
-        light_x = random.randint(25, self.sim.window_width - 25)
-        light_y = random.randint(25, self.sim.window_height - 25)
-        self.light = Light([light_x, light_y])
+    def run_offline(self, narx, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+        self.net = narx
+        self.start_x = veh_pos[0]
+        self.start_y = veh_pos[1]
+        self.start_a = veh_angle
+        self.light = Light(light_pos)
 
-        start_light_dist = math.sqrt((light_x - self.start_x) ** 2 + (light_y - self.start_y) ** 2)
+        start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
         print 'vehicle available frames: ' + str(start_light_dist)
         self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames and tested with a big dist
 

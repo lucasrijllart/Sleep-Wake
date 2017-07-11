@@ -182,7 +182,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.rect.center = previous_center
 
 
-class Attacker(pygame.sprite.Sprite):
+class BrainVehicle(pygame.sprite.Sprite):
 
     def __init__(self, start_pos, start_angle):
         # pygame init

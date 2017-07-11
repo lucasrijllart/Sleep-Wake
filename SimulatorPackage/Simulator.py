@@ -4,7 +4,7 @@ import pygame
 import math
 import random
 import matplotlib.pyplot as plt
-from Vehicles import Attacker, RandomMotorVehicle
+from Vehicles import BrainVehicle, RandomMotorVehicle
 from Light import Light
 
 
@@ -121,14 +121,14 @@ class Simulator:
             l_y = 600
 
         # create sprites
-        vehicle = Attacker([v1_x, v1_y], v1_angle)
+        vehicle = BrainVehicle([v1_x, v1_y], v1_angle)
         light = Light([l_x, l_y])
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
     def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, use_seed=None, attacker=False):
         if attacker:
-            vehicle = Attacker(veh_pos, veh_angle)
+            vehicle = BrainVehicle(veh_pos, veh_angle)
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
         light = Light(light_pos)

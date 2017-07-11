@@ -69,6 +69,10 @@ def show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_
 class Cycle:
 
     def __init__(self):
+
+        self.net = None  # NARX network
+        self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
+
         self.count_cycles = 0
 
     def sleep(self):
@@ -97,15 +101,16 @@ class Cycle:
 
         # Training of network
 
-        net = Narx(input_delay=input_delay, output_delay=output_delay)
+        self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
-        net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
+        self.net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
 
         # Predicting of sensory outputs
 
         # extract predictions and compare with test
-        predictions = net.predict(test_input)
+        print test_input
+        predictions = self.net.predict(test_input)
         predictions_left = predictions[0]
         predictions_right = predictions[1]
         real_left = np.array(test_target)[0]
@@ -123,5 +128,11 @@ class Cycle:
                              real_right, predictions_left, predictions_right)
         self.count_cycles += 1
 
-    def getControls(self):
+    def wake_testing(self):
+        """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
+        robot in the world and retrieving its sensory information """
+
+        pass
+
+    def get_controls(self):
         pass
