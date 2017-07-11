@@ -73,6 +73,7 @@ class Cycle:
 
         self.net = None  # NARX network
         self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
+        self.train_input = None
 
         self.count_cycles = 0
 
@@ -91,7 +92,7 @@ class Cycle:
         test_input, test_target = pre_process(data)
 
         # separation into training and testing
-        train_input = np.transpose(np.array(inputs_list))
+        self.train_input = np.transpose(np.array(inputs_list))
         train_target = np.transpose(np.array(targets_list))
         test_input = np.transpose(np.array(test_input))
         test_target = np.transpose(np.array(test_target))
@@ -101,17 +102,11 @@ class Cycle:
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
-        self.net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
+        self.net.train(self.train_input, train_target, verbose=True, max_iter=net_max_iter)
 
         # Predicting of sensory outputs
 
         # extract predictions and compare with test
-        print test_input
-        new = np.array([np.delete(vector, 0) for vector in test_input])
-        vars = np.array([[1], [2], [3], [4]])
-        new = np.concatenate((new, vars), axis=1)
-        print np.array(new)
-
         predictions = self.net.predict(test_input)
         predictions_left = predictions[0]
         predictions_right = predictions[1]
@@ -132,8 +127,8 @@ class Cycle:
 
     def sleep(self):
         # run GA and find best brain to give to testing
-        ga = GA
-        pass
+        ga = GA()
+        ga.run_offline(self.net, self.train_input)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
