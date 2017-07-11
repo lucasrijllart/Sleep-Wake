@@ -7,7 +7,7 @@ from decimal import Decimal
 
 
 def pre_process(raw_data):
-    """ Creates two arrays of training inputs and targets to feed to the NARX network"""
+    """ Creates two arrays of training inputs and targets to feed to the NARX network """
     new_inputs = []
     new_targets = []
     for t in range(0, len(raw_data[0])):
@@ -42,6 +42,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
 
 def show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
                      real_right, predictions_left, predictions_right):
+    """ Presents a graph with both sensors' real and predicted values and their mean squared error """
     i = np.array(range(0, len(real_left)))
     plt.figure(1)
     plt.suptitle('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
@@ -74,20 +75,12 @@ class Cycle:
         # generate motor commands
         pass
 
-    def wake_learning(self, show_graph=False):
+    def wake_learning(self, vehicle_runs=4, vehicle_iter=400, test_iter=400, input_delay=5, output_delay=5,
+                      net_max_iter=50, test_seed=200, show_graph=False):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
 
         # Random training commands
-
-        vehicle_runs = 4
-        vehicle_iter = 500
         test_runs = 1
-        test_iter = 400
-        test_seed = 200
-
-        input_delay = 5
-        output_delay = 5
-        net_max_iter = 50
 
         # collect data for NARX and testing and pre-process data
         data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
@@ -128,6 +121,7 @@ class Cycle:
         if show_graph:
             show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
                              real_right, predictions_left, predictions_right)
+        self.count_cycles += 1
 
     def getControls(self):
         pass
