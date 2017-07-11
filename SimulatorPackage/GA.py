@@ -84,6 +84,8 @@ class GA:
         else:  # if offline, get fitness by using predictions
             pass
             # 1. predict next sensory output
+
+            #log the output of the sensors
             sensor_log = [[]]
             sensor_log = np.concatenate((sensor_log, output), axis=1)
             # 2. add sensory information to list (which we will use for fitness)
@@ -103,12 +105,10 @@ class GA:
             # loop back to 1 until reached timestep (50)
 
             # calculate fitness by taking average of sensory predictions
-            r, c = sensor_log.size
-            for ind in range(0, c):
-                pass
-                # sum the sensory data
-            #take the average
-            #return it as input
+            total = sum(sensor_log[0]) + sum(sensor_log[1])]
+            #devide by number of records/timesteps
+            fitness = total/len(sensor_log[0])
+            return fitness
 
 
 
