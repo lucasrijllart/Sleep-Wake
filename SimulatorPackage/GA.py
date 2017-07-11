@@ -1,6 +1,8 @@
 from Simulator import Simulator
 from Vehicles import BrainVehicle
 from Light import Light
+import numpy as np
+from Narx import Narx
 import random
 import math
 import matplotlib.pyplot as plt
@@ -82,12 +84,29 @@ class GA:
         else:  # if offline, get fitness by using predictions
             pass
             # 1. predict next sensory output
+            sensor_log = [[]]
+            sensor_log = np.concatenate((sensor_log, output), axis=1)
             # 2. add sensory information to list (which we will use for fitness)
-            # 3. feed it to the brain
-            # 4. get the motor commands that the sensory information would translate to
-            # 5. add this set of data to the input of the prediction
+            # 3. feed it to the brain get the motor commands that the sensory information would translate to
+            # 4. add this set of data to the input of the prediction
+            s_l = random.randint(-8, 8)
+            s_r = random.randint(-8, 8)
+            weel_l = random.randint(-5, 5)
+            weel_r = random.randint(-5, 5)
+
+            # CREATE NEXT INPUT
+            next_input = [[s_l], [s_r], [wheel_l], [wheel_r]]
+
+            # concatenate to the full data
+            data = np.concatenate((data, next_input), axis=1 )
+
             # loop back to 1 until reached timestep (50)
+
             # calculate fitness by taking average of sensory predictions
+            r, c = sensor_log.size
+            for ind in range(0, ):
+
+
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = self._get_fitness(individual1)
