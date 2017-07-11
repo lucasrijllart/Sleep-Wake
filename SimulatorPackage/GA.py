@@ -59,7 +59,7 @@ class GA:
             i += 1
         return fitnesses
 
-    def _get_fitness(self, ind):
+    def _get_fitness(self, ind, timesteps=None):
         # create sprites
         vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
         vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
@@ -84,31 +84,34 @@ class GA:
             return fitness
 
         else:  # if offline, get fitness by using predictions
-            # 1. predict next sensory output
-            self.net.predict(self.data)
 
-            #log the output of the sensors
             sensor_log = [[]]
-            sensor_log = np.concatenate((sensor_log, output), axis=1)
-            # 2. add sensory information to list (which we will use for fitness)
 
-            # 3. feed it to the brain to get motor information
-            sensor_l, sensor_r = 0, 0
-            wheel_l, wheel_r = [(sensor_l * ind[0]) + (sensor_r * ind[3]) + ind[4] / 80,
-                                (sensor_r * ind[2]) + (sensor_l * ind[1]) + ind[5] / 80]
-            # 4. add this set of data to the input of the prediction
-            s_l = random.randint(-8, 8)
-            s_r = random.randint(-8, 8)
-            weel_l = random.randint(-5, 5)
-            weel_r = random.randint(-5, 5)
+            #NEED TO CREATE INITIAL NARX INPUT DATA
 
-            # CREATE NEXT INPUT
-            next_input = [[s_l], [s_r], [wheel_l], [wheel_r]]
+            for it in range(0, timesteps): # loop through the time steps
+                # 1. predict next sensory output
+                prediction = self.net.predict(self.data, )
 
-            # concatenate to the full data
-            data = np.concatenate((data, next_input), axis=1 )
+                #log the output of the sensors
 
-            # loop back to 1 until reached timestep (50)
+                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+                # 2. add sensory information to list (which we will use for fitness)
+
+                # 3. feed it to the brain to get motor information
+                sensor_l, sensor_r = 0, 0
+                wheel_l, wheel_r = [(sensor_l * ind[0]) + (sensor_r * ind[3]) + ind[4] / 80,
+                                    (sensor_r * ind[2]) + (sensor_l * ind[1]) + ind[5] / 80]
+                # 4. add this set of data to the input of the prediction
+
+                # CREATE NEXT INPUT
+                next_input = [[sensor_l], [sensor_r], [wheel_l], [wheel_r]]
+
+                # concatenate to the full data
+                data = np.concatenate((data, next_input), axis=1 )
+
+                # loop back to 1 until reached timestep (50)
+
 
             # calculate fitness by taking average of sensory predictions
             total = sum(sensor_log[0]) + sum(sensor_log[1])]

@@ -19,8 +19,7 @@ class Narx:
         self.net = pr.train_LM(inputs, targets, self.net, k_max=max_iter, verbose=verbose)
 
     def predict(self, x, pre_inputs=None, pre_outputs=None):
-        for ind in range(0, c):
-            y = pr.NNOut(x[ind], self.net, pre_inputs, pre_outputs)
+        y = pr.NNOut(x, self.net, pre_inputs, pre_outputs)
         return y
 
     #TODO: May need to add a method to take into account
