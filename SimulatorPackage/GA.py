@@ -115,7 +115,6 @@ class GA:
 
                 # loop back to 1 until reached timestep (50)
 
-
             # calculate fitness by taking average of sensory predictions
             total = sum(sensor_log[0]) + sum(sensor_log[1])
             # devide by number of records/timesteps
