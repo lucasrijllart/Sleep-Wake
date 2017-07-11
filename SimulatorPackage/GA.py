@@ -104,7 +104,11 @@ class GA:
 
             # calculate fitness by taking average of sensory predictions
             r, c = sensor_log.size
-            for ind in range(0, ):
+            for ind in range(0, c):
+                pass
+                # sum the sensory data
+            #take the average
+            #return it as input
 
 
 
