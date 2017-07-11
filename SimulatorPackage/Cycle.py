@@ -75,10 +75,6 @@ class Cycle:
 
         self.count_cycles = 0
 
-    def sleep(self):
-        # generate motor commands
-        pass
-
     def wake_learning(self, vehicle_runs=4, vehicle_iter=400, test_iter=400, input_delay=5, output_delay=5,
                       net_max_iter=50, test_seed=200, show_graph=False):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
@@ -110,6 +106,11 @@ class Cycle:
 
         # extract predictions and compare with test
         print test_input
+        new = np.array([np.delete(vector, 0) for vector in test_input])
+        vars = np.array([[1], [2], [3], [4]])
+        new = np.concatenate((new, vars), axis=1)
+        print np.array(new)
+
         predictions = self.net.predict(test_input)
         predictions_left = predictions[0]
         predictions_right = predictions[1]
@@ -127,6 +128,11 @@ class Cycle:
             show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
                              real_right, predictions_left, predictions_right)
         self.count_cycles += 1
+
+    def sleep(self):
+        # run GA and find best brain to give to testing
+
+        pass
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled

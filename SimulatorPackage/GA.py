@@ -23,6 +23,7 @@ class GA:
         self.iterations = None
 
         self.net = None  # NARX network used to predict values for fitness
+        self.data = None
 
     def _init_pool(self, individuals):
         pool = []
@@ -81,15 +82,20 @@ class GA:
             fitness = 1000 / fitness
 
             return fitness
+
         else:  # if offline, get fitness by using predictions
-            pass
             # 1. predict next sensory output
+            self.net.predict(self.data)
 
             #log the output of the sensors
             sensor_log = [[]]
             sensor_log = np.concatenate((sensor_log, output), axis=1)
             # 2. add sensory information to list (which we will use for fitness)
-            # 3. feed it to the brain get the motor commands that the sensory information would translate to
+
+            # 3. feed it to the brain to get motor information
+            sensor_l, sensor_r = 0, 0
+            wheel_l, wheel_r = [(sensor_l * ind[0]) + (sensor_r * ind[3]) + ind[4] / 80,
+                                (sensor_r * ind[2]) + (sensor_l * ind[1]) + ind[5] / 80]
             # 4. add this set of data to the input of the prediction
             s_l = random.randint(-8, 8)
             s_r = random.randint(-8, 8)
@@ -170,8 +176,9 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_offline(self, narx, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+    def run_offline(self, narx, data, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         self.net = narx
+        self.data = data
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
