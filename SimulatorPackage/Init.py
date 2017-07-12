@@ -12,8 +12,8 @@ input_delay = 20
 output_delay = 20
 max_epochs = 150
 
-cycle.wake_learning(vehicle_runs=learning_runs, vehicle_iter=learning_time, test_iter=testing_time, input_delay=input_delay,
-                    output_delay=output_delay, net_max_iter=max_epochs, show_graph=False)
+# cycle.wake_learning(vehicle_runs=learning_runs, vehicle_iter=learning_time, test_iter=testing_time, input_delay=input_delay,
+#                     output_delay=output_delay, net_max_iter=max_epochs, show_graph=False)
 
 
-#cycle.sleep()
+cycle.sleep(netfileName='narxNet', lookAhaid=100, generations=10)

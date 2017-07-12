@@ -1,5 +1,7 @@
 import pyrenn as pr
 
+def load_net(filename='narxNet'):
+    return pr.loadNN(filename)
 
 class Narx:
 
@@ -25,5 +27,3 @@ class Narx:
     def save_to_file(self, filename='narxNet'):
         pr.saveNN(self.net, filename=filename)
 
-    def load_net(self, filename='narxNet'):
-        return pr.loadNN(filename)

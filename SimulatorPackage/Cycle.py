@@ -2,6 +2,7 @@ import numpy as np
 import random
 from Simulator import Simulator
 from Narx import Narx
+import Narx as narx
 import matplotlib.pyplot as plt
 from decimal import Decimal
 from GA import GA
@@ -126,11 +127,12 @@ class Cycle:
                              real_right, predictions_left, predictions_right)
         self.count_cycles += 1
 
-    def sleep(self, netfileName='narxNet'):
-        net = self.net.load_net(netfileName)
+    def sleep(self, netfileName='narxNet', lookAhaid=100, generations=10):
+        #Make it to use variable net unless filename specified
+        net = narx.load_net(netfileName)
         # run GA and find best brain to give to testing
         ga = GA()
-        ga.run_offline(net, self.train_input, timesteps=100, generations=10)
+        ga.run_offline(net, self.train_input, timesteps=lookAhaid, generations=generations)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled

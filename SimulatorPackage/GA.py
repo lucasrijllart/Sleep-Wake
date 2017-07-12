@@ -90,7 +90,8 @@ class GA:
 
             sensor_log = np.array([[], []])
 
-            next_input = np.array(self.data[:, -1])
+            #next_input = np.array(self.data[:, -1])
+            next_input = np.array([[0], [0], [0], [0]])
             next_input = np.array([[x] for x in next_input])
             for it in range(0, self.timesteps):  # loop through the time steps
                 # 1. predict next sensory output
