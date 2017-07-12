@@ -76,6 +76,7 @@ class Cycle:
         self.net = None  # NARX network
         self.vehicle = None
         self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
+        self.vehicle_first_move = None
 
         self.sim = None
 
@@ -125,33 +126,28 @@ class Cycle:
             show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
                              real_right, predictions_left, predictions_right)
 
-    def wake_learning(self, random_movements, train_network, vehicle_runs=4, vehicle_iter=400, test_iter=400, input_delay=5, output_delay=5,
-                      net_max_iter=50, test_seed=200, show_graph=False):
+    def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400, testing_time=400,
+                      input_delay=5, output_delay=5, max_epochs=50, test_seed=200, show_graph=False):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
 
         if train_network:
-            self.train_network(vehicle_runs, vehicle_iter, test_iter, input_delay, output_delay, net_max_iter,
+            self.train_network(learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
                                test_seed, show_graph)
 
-        self.sim = Simulator()
-        self.sim.init_simulation(random_movements, True)
+        self.vehicle_first_move = collect_random_data(runs=1, iterations=random_movements)
+        self.vehicle_first_move = pre_process(self.vehicle_first_move)
 
         self.count_cycles += 1
 
-    def sleep(self, netfileName='narxNet', lookAhaid=100, generations=10):
-        # Make it to use variable net unless filename specified
-        # load a saved net and create the object
-        saved_net = narx.load_net(netfileName)
-        net = Narx()
-        net.set_net(saved_net)
+    def sleep(self, net_filename=None, lookAhaid=100, generations=10):
+        if net_filename is not None:
+            saved_net = narx.load_net(net_filename)
+            self.net = Narx()
+            self.net.set_net(saved_net)
 
-        data = collect_random_data(runs=1, iterations=50)
-        start_data, targets_list = pre_process(data)
-        start_data = np.transpose(start_data)
-        print start_data
         # run GA and find best brain to give to testing
         ga = GA()
-        ga.run_offline(net, start_data,  timesteps=lookAhaid, generations=generations)
+        ga.run_offline(self.net, self.vehicle_first_move, timesteps=lookAhaid, generations=generations)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
