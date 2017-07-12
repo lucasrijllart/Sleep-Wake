@@ -24,7 +24,7 @@ class GA:
 
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
-        self.timesteps = None
+        self.look_ahead = None
 
         self.sim = Simulator()
 
@@ -62,12 +62,11 @@ class GA:
             i += 1
         return fitnesses
 
-    def _get_fitness(self, ind, timesteps=None):
-        # create sprites
-        vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
-        vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
-
+    def _get_fitness(self, ind):
         if self.net is None:
+            # create sprites
+            vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
+            vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
             # create Simulation
             vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
 
@@ -87,17 +86,17 @@ class GA:
             return fitness
 
         else:  # if offline, get fitness by using predictions
-
             sensor_log = np.array([[], []])
 
             next_input = np.array(self.data[:, -1])
+            data = self.data
             next_input = np.array([[x] for x in next_input])
-            for it in range(0, self.timesteps):  # loop through the time steps
+            for it in range(0, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
-                prediction = self.net.predict(next_input, pre_inputs=self.data, pre_outputs=self.data[2:])
+                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
 
                 # concatenate to the full data
-                self.data = np.concatenate((self.data, next_input), axis=1)
+                data = np.concatenate((data, next_input), axis=1)
 
                 # 2. log predicted sensory information to list (used for fitness)
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
@@ -114,17 +113,19 @@ class GA:
             return (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
-        fitness1 = self._get_fitness(individual1)
-        fitness2 = self._get_fitness(individual2)
+        fitness1 = individual1[2]
+        fitness2 = individual2[2]
 
         if fitness1 >= fitness2:
-            ind1, ind2 = self._perform_crossover(individual1, individual2, crossover_rate, mutation_rate)
-            return [ind1, fitness1, ind2, fitness2]
+            ind1, ind2 = self._perform_crossover(individual1[1], individual2[1], crossover_rate, mutation_rate)
+            new_fit = self._get_fitness(ind2)
+            return [ind1, ind2, 2, new_fit]  # return 2 means the fitness is of individual 2 (loser)
         else:
-            ind2, ind1 = self._perform_crossover(individual2, individual1, crossover_rate, mutation_rate)
-            return [ind1, fitness1, ind2, fitness2]
+            ind2, ind1 = self._perform_crossover(individual2[1], individual1[1], crossover_rate, mutation_rate)
+            new_fit = self._get_fitness(ind1)
+            return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
-    def _run_winner(self, graphics, ind):
+    def _run_winner(self, graphics, ind):  # TODO: remove this as we shouldn't run the winner from starting pos
         print 'Running: ' + str(ind) + str(self._get_fitness(ind[1]))
         ind = ind[1]
         vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
@@ -133,14 +134,11 @@ class GA:
         self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
-        pool = self._init_pool(individuals)
-        all_fitness = self._get_all_fitnesses(pool)
-        print(all_fitness)
+        pool = self._get_all_fitnesses(self._init_pool(individuals))
         best_ind = [0, 0, 0]
-        for ind in all_fitness:
+        for ind in pool:
             if ind[2] > best_ind[2]:
                 best_ind = ind
-        print 'best: ' + str(best_ind)
         best_fit = [best_ind[2]]
         for generation in range(0, individuals * generations):
             print '\rgen: ' + str(generation) + '/' + str(individuals * generations),
@@ -151,19 +149,23 @@ class GA:
             if rand_ind1 == rand_ind2:
                 rand_ind2 = random.randint(0, individuals - 1)
             # compare fitnesses
-            ind1, fit1, ind2, fit2 = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
+            ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
 
-            # winner overwrites loser with crossover
-            pool[rand_ind1] = ind1
-            pool[rand_ind2] = ind2
-            all_fitness[rand_ind1][2] = fit1
-            all_fitness[rand_ind2][2] = fit2
-            if all_fitness[rand_ind1][2] > best_ind[2]:
-                best_ind = all_fitness[rand_ind1]
-                best_fit.append(all_fitness[rand_ind1][2])
-            elif all_fitness[rand_ind2][2] > best_ind[2]:
-                best_ind = all_fitness[rand_ind2]
-                best_fit.append(all_fitness[rand_ind2][2])
+            # check who is winner and overwrite their stats
+            if loser == 1:
+                pool[rand_ind1][1] = ind1
+                pool[rand_ind1][2] = fit
+            else:
+                pool[rand_ind2][1] = ind2
+                pool[rand_ind2][2] = fit
+
+            # update loser fitness and best fitness of the pool
+            if pool[rand_ind1][2] > best_ind[2]:
+                best_ind = pool[rand_ind1]
+                best_fit.append(pool[rand_ind1][2])
+            elif pool[rand_ind2][2] > best_ind[2]:
+                best_ind = pool[rand_ind2]
+                best_fit.append(pool[rand_ind2][2])
             else:
                 best_fit.append(best_ind[2])
 
@@ -172,15 +174,17 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_offline(self, narx, data, timesteps=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=10, generations=2, crossover_rate=0.7, mutation_rate=0.3):
+        return best_ind[1]
+
+    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
+                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
             veh_pos = [300, 300]
         self.net = narx
         self.data = data
-        self.timesteps = timesteps
+        self.look_ahead = look_ahead
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
@@ -189,7 +193,8 @@ class GA:
         start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
         self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames and tested with a big dist
 
-        self._start_ga(individuals, generations, crossover_rate, mutation_rate)
+        print 'Starting ga: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
+        return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
     def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         self.start_x = veh_pos[0]

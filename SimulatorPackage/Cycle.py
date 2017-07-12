@@ -86,7 +86,7 @@ class Cycle:
                       show_graph, test_runs=1):
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
-        test_input, test_target = collect_random_data(runs=test_runs, seed=test_seed, vehicle_angle=100,
+        test_input, test_target = collect_random_data(runs=test_runs, vehicle_angle=100,
                                                       iterations=test_iter)
 
         # Training of network
@@ -121,25 +121,25 @@ class Cycle:
     def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400, testing_time=400,
                       input_delay=5, output_delay=5, max_epochs=50, test_seed=200, show_graph=False):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
-
+        # Train network or use network alreay saved
         if train_network:
             self.train_network(learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
                                test_seed, show_graph)
 
         self.vehicle_first_move, targets = collect_random_data(runs=1, iterations=random_movements)
-        print self.vehicle_first_move.shape
 
         self.count_cycles += 1
 
-    def sleep(self, net_filename=None, lookAhaid=100, generations=5):
+    def sleep(self, net_filename=None, look_ahead=100):
         if net_filename is not None:
+            print 'Loading NARX from file "' + str(net_filename) + '"'
             saved_net = narx.load_net(net_filename)
             self.net = Narx()
             self.net.set_net(saved_net)
 
         # run GA and find best brain to give to testing
         ga = GA()
-        ga.run_offline(self.net, self.vehicle_first_move, timesteps=lookAhaid, generations=generations)
+        brain = ga.run_offline(self.net, self.vehicle_first_move, look_ahead=look_ahead, generations=5)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
