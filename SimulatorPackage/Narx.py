@@ -13,6 +13,9 @@ class Narx:
 
         self.net = pr.CreateNN(self.layers, dIn=self.in_delay, dOut=self.out_delay)
 
+    def set_net(self, net):
+        self.net = net
+
     def getNet(self):
         return self.net
 

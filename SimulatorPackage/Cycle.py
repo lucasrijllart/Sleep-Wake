@@ -139,11 +139,19 @@ class Cycle:
         self.count_cycles += 1
 
     def sleep(self, netfileName='narxNet', lookAhaid=100, generations=10):
-        #Make it to use variable net unless filename specified
-        net = narx.load_net(netfileName)
+        # Make it to use variable net unless filename specified
+        # load a saved net and create the object
+        saved_net = narx.load_net(netfileName)
+        net = Narx()
+        net.set_net(saved_net)
+
+        data = collect_random_data(runs=1, iterations=50)
+        start_data, targets_list = pre_process(data)
+        start_data = np.transpose(start_data)
+        print start_data
         # run GA and find best brain to give to testing
         ga = GA()
-        ga.run_offline(net, self.train_input, timesteps=lookAhaid, generations=generations)
+        ga.run_offline(net, start_data,  timesteps=lookAhaid, generations=generations)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
