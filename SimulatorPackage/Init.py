@@ -17,4 +17,4 @@ max_epochs = 50
 
 cycle.wake_learning(50, train_network=True, learning_runs=learning_runs, learning_time=learning_time, input_delay=input_delay, output_delay=output_delay, max_epochs=max_epochs)
 
-cycle.sleep(net_filename='narxNet', lookAhaid=100, generations=10)
+cycle.sleep(net_filename='narxNet', lookAhaid=100, generations=4)

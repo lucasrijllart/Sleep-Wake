@@ -18,7 +18,7 @@ def pre_process(raw_data):
             new_inputs.append(np.transpose(np.array(raw_data[vehicle][t])))
             # extracting targets from data and adding to new list (transposed)
             new_targets.append(np.transpose(np.array(raw_data[vehicle][t][-2:])))
-    return [new_inputs, new_targets]
+    return [np.transpose(np.array(new_inputs)), np.transpose(np.array(new_targets))]
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, runs=10, iterations=1000, graphics=False,
@@ -40,7 +40,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
     print 'Collected data from ' + str(runs) + ' vehicles over ' + str(iterations) + ' iterations'
-    return data
+    return pre_process(data)
 
 
 def show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
@@ -85,17 +85,9 @@ class Cycle:
     def train_network(self, vehicle_runs, vehicle_iter, test_iter, input_delay, output_delay, net_max_iter, test_seed,
                       show_graph, test_runs=1):
         # collect data for NARX and testing and pre-process data
-        data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
-        inputs_list, targets_list = pre_process(data)
-        data = collect_random_data(runs=test_runs, seed=test_seed, vehicle_angle=100, iterations=test_iter,
-                                   graphics=False)
-        test_input, test_target = pre_process(data)
-
-        # separation into training and testing
-        train_input = np.transpose(np.array(inputs_list))
-        train_target = np.transpose(np.array(targets_list))
-        test_input = np.transpose(np.array(test_input))
-        test_target = np.transpose(np.array(test_target))
+        train_input, train_target = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
+        test_input, test_target = collect_random_data(runs=test_runs, seed=test_seed, vehicle_angle=100,
+                                                      iterations=test_iter)
 
         # Training of network
 
@@ -134,12 +126,12 @@ class Cycle:
             self.train_network(learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
                                test_seed, show_graph)
 
-        self.vehicle_first_move = collect_random_data(runs=1, iterations=random_movements)
-        self.vehicle_first_move = pre_process(self.vehicle_first_move)
+        self.vehicle_first_move, targets = collect_random_data(runs=1, iterations=random_movements)
+        print self.vehicle_first_move.shape
 
         self.count_cycles += 1
 
-    def sleep(self, net_filename=None, lookAhaid=100, generations=10):
+    def sleep(self, net_filename=None, lookAhaid=100, generations=5):
         if net_filename is not None:
             saved_net = narx.load_net(net_filename)
             self.net = Narx()
