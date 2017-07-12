@@ -6,6 +6,7 @@ import Narx as narx
 import matplotlib.pyplot as plt
 from decimal import Decimal
 from GA import GA
+from Vehicles import RandomMotorVehicle
 
 
 def pre_process(raw_data):
@@ -73,17 +74,15 @@ class Cycle:
     def __init__(self):
 
         self.net = None  # NARX network
+        self.vehicle = None
         self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
+
+        self.sim = None
 
         self.count_cycles = 0
 
-    def wake_learning(self, vehicle_runs=4, vehicle_iter=400, test_iter=400, input_delay=5, output_delay=5,
-                      net_max_iter=50, test_seed=200, show_graph=False):
-        """ Start with random commands to train the model then compares actual with predicted sensor readings"""
-
-        # Random training commands
-        test_runs = 1
-
+    def train_network(self, vehicle_runs, vehicle_iter, test_iter, input_delay, output_delay, net_max_iter, test_seed,
+                      show_graph, test_runs=1):
         # collect data for NARX and testing and pre-process data
         data = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
         inputs_list, targets_list = pre_process(data)
@@ -92,7 +91,7 @@ class Cycle:
         test_input, test_target = pre_process(data)
 
         # separation into training and testing
-        self.train_input = np.transpose(np.array(inputs_list))
+        train_input = np.transpose(np.array(inputs_list))
         train_target = np.transpose(np.array(targets_list))
         test_input = np.transpose(np.array(test_input))
         test_target = np.transpose(np.array(test_target))
@@ -102,9 +101,9 @@ class Cycle:
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
-        self.net.train(self.train_input, train_target, verbose=True, max_iter=net_max_iter)
+        self.net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
 
-        #save network to file
+        # save network to file
         self.net.save_to_file()
         # Predicting of sensory outputs
 
@@ -125,6 +124,18 @@ class Cycle:
         if show_graph:
             show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
                              real_right, predictions_left, predictions_right)
+
+    def wake_learning(self, random_movements, train_network, vehicle_runs=4, vehicle_iter=400, test_iter=400, input_delay=5, output_delay=5,
+                      net_max_iter=50, test_seed=200, show_graph=False):
+        """ Start with random commands to train the model then compares actual with predicted sensor readings"""
+
+        if train_network:
+            self.train_network(vehicle_runs, vehicle_iter, test_iter, input_delay, output_delay, net_max_iter,
+                               test_seed, show_graph)
+
+        self.sim = Simulator()
+        self.sim.init_simulation(random_movements, True)
+
         self.count_cycles += 1
 
     def sleep(self, netfileName='narxNet', lookAhaid=100, generations=10):

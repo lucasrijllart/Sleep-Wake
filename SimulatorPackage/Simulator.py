@@ -126,8 +126,9 @@ class Simulator:
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
-    def init_simulation(self, iteration, graphics, veh_pos, veh_angle, light_pos, gamma, use_seed=None, attacker=False):
-        if attacker:
+    def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+                        light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=False):
+        if brain:
             vehicle = BrainVehicle(veh_pos, veh_angle)
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)

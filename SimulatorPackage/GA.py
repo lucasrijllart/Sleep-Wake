@@ -180,8 +180,8 @@ class GA:
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-    def run_offline(self, narx, data, timesteps=25, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=2, crossover_rate=0.7, mutation_rate=0.3):
+    def run_offline(self, narx, data, timesteps=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
+                    individuals=10, generations=2, crossover_rate=0.7, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
