@@ -73,7 +73,6 @@ class Cycle:
 
         self.net = None  # NARX network
         self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
-        self.train_input = None
 
         self.count_cycles = 0
 
@@ -104,6 +103,8 @@ class Cycle:
         # train network
         self.net.train(self.train_input, train_target, verbose=True, max_iter=net_max_iter)
 
+        #save network to file
+        self.net.save_to_file()
         # Predicting of sensory outputs
 
         # extract predictions and compare with test
@@ -125,10 +126,11 @@ class Cycle:
                              real_right, predictions_left, predictions_right)
         self.count_cycles += 1
 
-    def sleep(self):
+    def sleep(self, netfileName='narxNet'):
+        net = self.net.load_net(netfileName)
         # run GA and find best brain to give to testing
         ga = GA()
-        ga.run_offline(self.net, self.train_input)
+        ga.run_offline(net, self.train_input, timesteps=100, generations=10)
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled

@@ -194,7 +194,6 @@ class GA:
         self.light = Light(light_pos)
 
         start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
-        print 'vehicle available frames: ' + str(start_light_dist)
         self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames and tested with a big dist
 
         self._start_ga(individuals, generations, crossover_rate, mutation_rate)

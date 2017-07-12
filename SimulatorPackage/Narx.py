@@ -22,5 +22,8 @@ class Narx:
         y = pr.NNOut(x, self.net, pre_inputs, pre_outputs)
         return y
 
-    #TODO: May need to add a method to take into account
-    #TODO: the old inputs and outputs
+    def save_to_file(self, filename='narxNet'):
+        pr.saveNN(self.net, filename=filename)
+
+    def load_net(self, filename='narxNet'):
+        return pr.loadNN(filename)

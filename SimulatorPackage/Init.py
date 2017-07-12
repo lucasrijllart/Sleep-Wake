@@ -5,14 +5,15 @@ from Cycle import Cycle
 
 cycle = Cycle()
 
-learning_runs = 8
-learning_time = 500
-testing_time = 500
-input_delay = 5
-output_delay = 5
-max_epochs = 100
+learning_runs = 20
+learning_time = 1000
+testing_time = 1
+input_delay = 20
+output_delay = 20
+max_epochs = 150
 
 cycle.wake_learning(vehicle_runs=learning_runs, vehicle_iter=learning_time, test_iter=testing_time, input_delay=input_delay,
                     output_delay=output_delay, net_max_iter=max_epochs, show_graph=False)
 
-cycle.sleep()
+
+#cycle.sleep()
