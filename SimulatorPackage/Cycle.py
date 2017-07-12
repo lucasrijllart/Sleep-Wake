@@ -97,7 +97,7 @@ class Cycle:
         self.net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
 
         # save network to file
-        self.net.save_to_file()
+        self.net.save_to_file(filename='testNARX')
         # Predicting of sensory outputs
 
         # extract predictions and compare with test

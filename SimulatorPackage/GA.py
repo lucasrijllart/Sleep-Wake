@@ -95,41 +95,34 @@ class GA:
             for it in range(0, self.timesteps):  # loop through the time steps
                 # 1. predict next sensory output
                 prediction = self.net.predict(next_input, pre_inputs=self.data, pre_outputs=self.data[2:])
-                # print 'prediction: ' + str(prediction)
 
                 # concatenate to the full data
                 self.data = np.concatenate((self.data, next_input), axis=1)
 
                 # 2. log predicted sensory information to list (used for fitness)
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-                # print 'sensor_log: ' + str(sensor_log)
 
                 # 3. feed it to the brain to get motor information
-                sensor_l = prediction[0]
-                sensor_r = prediction[1]
-                wheel_l, wheel_r = [(sensor_l * ind[0]) + (sensor_r * ind[3]) + ind[4] / 80,
-                                    (sensor_r * ind[2]) + (sensor_l * ind[1]) + ind[5] / 80]
+                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
+                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
 
                 # 4. add this set of data to the input of the prediction
-                next_input = np.array([wheel_l, wheel_r, sensor_l, sensor_r])
-
-                # loop back to 1 until reached timestep (50)
+                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+                # loop back to 1 until reached timestep
 
             # calculate fitness by taking average of sensory predictions
-            total = sum(sensor_log[0]) + sum(sensor_log[1])
-            # devide by number of records/timesteps
-            fitness = total/len(sensor_log[0])
-            return fitness
+            return (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = self._get_fitness(individual1)
         fitness2 = self._get_fitness(individual2)
 
         if fitness1 >= fitness2:
-            return self._perform_crossover(individual1, individual2, crossover_rate, mutation_rate)
+            ind1, ind2 = self._perform_crossover(individual1, individual2, crossover_rate, mutation_rate)
+            return [ind1, fitness1, ind2, fitness2]
         else:
             ind2, ind1 = self._perform_crossover(individual2, individual1, crossover_rate, mutation_rate)
-            return [ind1, ind2]
+            return [ind1, fitness1, ind2, fitness2]
 
     def _run_winner(self, graphics, ind):
         print 'Running: ' + str(ind) + str(self._get_fitness(ind[1]))
@@ -158,13 +151,13 @@ class GA:
             if rand_ind1 == rand_ind2:
                 rand_ind2 = random.randint(0, individuals - 1)
             # compare fitnesses
-            ind1, ind2 = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
+            ind1, fit1, ind2, fit2 = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
 
             # winner overwrites loser with crossover
             pool[rand_ind1] = ind1
             pool[rand_ind2] = ind2
-            all_fitness[rand_ind1][2] = self._get_fitness(ind1)
-            all_fitness[rand_ind2][2] = self._get_fitness(ind2)
+            all_fitness[rand_ind1][2] = fit1
+            all_fitness[rand_ind2][2] = fit2
             if all_fitness[rand_ind1][2] > best_ind[2]:
                 best_ind = all_fitness[rand_ind1]
                 best_fit.append(all_fitness[rand_ind1][2])
