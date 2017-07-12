@@ -126,9 +126,17 @@ class Cycle:
             self.train_network(learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
                                test_seed, show_graph)
 
-        self.vehicle_first_move, targets = collect_random_data(runs=1, iterations=random_movements)
-
-        self.count_cycles += 1
+        # Create vehicle in simulation
+        self.sim = Simulator()
+        self.vehicle = self.sim.init_simulation(random_movements+1, graphics=True)
+        vehicle_move = []
+        for t in range(0, random_movements):
+            vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
+                                 self.vehicle.sensor_right[t]])
+        vehicle_first_move = []
+        for t in range(0, len(vehicle_move)):
+            vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
+        self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
     def sleep(self, net_filename=None, look_ahead=100):
         if net_filename is not None:
@@ -139,7 +147,8 @@ class Cycle:
 
         # run GA and find best brain to give to testing
         ga = GA()
-        brain = ga.run_offline(self.net, self.vehicle_first_move, look_ahead=look_ahead, generations=5)
+        brain = ga.run_offline(self.net, self.vehicle_first_move, look_ahead=look_ahead, generations=10)
+        # TODO: now go to wake testing and resume the simulation with the new brain
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
