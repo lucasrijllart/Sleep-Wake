@@ -66,7 +66,7 @@ class GA:
         if self.net is None:
             # create sprites
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
-            vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
+            vehicle.set_values(ind)
             # create Simulation
             vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
 
@@ -129,7 +129,7 @@ class GA:
         print 'Running: ' + str(ind) + str(self._get_fitness(ind[1]))
         ind = ind[1]
         vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
-        vehicle.set_values(ind[0], ind[1], ind[2], ind[3], ind[4], ind[5])
+        vehicle.set_values(ind)
         # create Simulation
         self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
 
@@ -141,7 +141,7 @@ class GA:
                 best_ind = ind
         best_fit = [best_ind[2]]
         for generation in range(0, individuals * generations):
-            print '\rgen: ' + str(generation) + '/' + str(individuals * generations),
+            print '\riter: ' + str(generation) + '/' + str(individuals * generations),
 
             # find 2 random individuals
             rand_ind1 = random.randint(0, individuals - 1)
@@ -169,8 +169,9 @@ class GA:
             else:
                 best_fit.append(best_ind[2])
 
-        print '\nBest fitness: ' + str(best_fit[-1]) + str(best_ind)
-        self._run_winner(self.graphics, best_ind)
+        print '\rFinished GA: %s iter' % (individuals * generations)
+        print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
+        # self._run_winner(self.graphics, best_ind)
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
@@ -191,9 +192,9 @@ class GA:
         self.light = Light(light_pos)
 
         start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
-        self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames and tested with a big dist
+        self.iterations = int(start_light_dist / 4)  # Halved number to limit num of frames and tested with a big dist
 
-        print 'Starting ga: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
+        print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
     def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):

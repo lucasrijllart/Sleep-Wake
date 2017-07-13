@@ -34,6 +34,7 @@ def show_sensors_motors(screen, vehicle):
     screen.blit(right_sensor, [int(direction_x), int(direction_y)])
 
     [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+    [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_pos]
 
 
 def show_graph(vehicle):
@@ -56,10 +57,11 @@ class Simulator:
         self.window_width = 1240
         self.window_height = 720
         self.number_of_iterations = 0
+        self.light = None
 
-    def run_simulation(self, iteration, graphics, vehicle, light):
+    def run_simulation(self, iteration, graphics, vehicle, show_sen_mot_graph=False):
         clock = pygame.time.Clock()  # clock to count ticks and fps
-        all_sprites = pygame.sprite.RenderPlain(vehicle, light)
+        all_sprites = pygame.sprite.RenderPlain(vehicle, self.light)
         if graphics:
             screen = pygame.display.set_mode((self.window_width, self.window_height))
             background = pygame.Surface(screen.get_size())
@@ -77,7 +79,7 @@ class Simulator:
             # if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
                 # break
 
-            all_sprites.update(t, light)
+            all_sprites.update(t, self.light)
 
             if graphics:
                 screen.blit(background, (0, 0))
@@ -91,10 +93,11 @@ class Simulator:
                 time.sleep(0.03)
             self.number_of_iterations += 1
 
-        if graphics:
+        if show_sen_mot_graph:
             show_graph(vehicle)
-            pygame.display.quit()
-            print 'Iterations: ' + str(self.number_of_iterations)
+
+        if graphics:
+            print 'PyGame iterations: ' + str(self.number_of_iterations)
 
         return vehicle
 
@@ -126,11 +129,29 @@ class Simulator:
 
         return self.run_simulation(iteration, graphics, vehicle, light)  # run simulation with given param
 
-    def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                        light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=False):
+    @staticmethod
+    def close():
+        pygame.display.quit()
+
+    def quick_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+                         light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=False):
+        """ Runs a simulation then closes then window """
         if brain:
             vehicle = BrainVehicle(veh_pos, veh_angle)
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
-        light = Light(light_pos)
-        return self.run_simulation(iteration, graphics, vehicle, light)
+        self.light = Light(light_pos)
+        vehicle = self.run_simulation(iteration, graphics, vehicle)
+        self.close()
+        return vehicle
+
+    def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+                         light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=False):
+        """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
+        if brain:
+            vehicle = BrainVehicle(veh_pos, veh_angle)
+        else:
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
+        self.light = Light(light_pos)
+        vehicle = self.run_simulation(iteration, graphics, vehicle)
+        return vehicle

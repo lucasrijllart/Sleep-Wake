@@ -120,6 +120,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.radius = 25  # radius of vehicle size
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
+        self.previous_pos = []
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -190,7 +191,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.image = pygame.image.load('images/attacker.png')  # image of vehicle
         self.original = self.image  # original image to use when rotating
         self.rect = self.image.get_rect()  # rectangle bounds of image
-        self.rect.center = start_pos # set bounds as vehicle starting position
+        self.rect.center = start_pos  # set bounds as vehicle starting position
         self.angle = start_angle  # starting angle
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
@@ -204,6 +205,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.motor_gain_ll, self.motor_gain_rl, self.motor_gain_rr, self.motor_gain_lr = 0, 8, 0, 8  # amplify motor signal
         self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
         self.reached_light = False
+        self.previous_pos = []  # keeps track of the movement before the brain (random movements)
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -211,13 +213,13 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.motor_left = []
         self.motor_right = []
 
-    def set_values(self, ll, lr, rr, rl, bl, br):
-        self.motor_gain_ll = ll
-        self.motor_gain_lr = lr
-        self.motor_gain_rr = rr
-        self.motor_gain_rl = rl
-        self.bias_l = bl
-        self.bias_r = br
+    def set_values(self, ll_lr_rr_rl_bl_br):
+        self.motor_gain_ll = ll_lr_rr_rl_bl_br[0]
+        self.motor_gain_lr = ll_lr_rr_rl_bl_br[1]
+        self.motor_gain_rr = ll_lr_rr_rl_bl_br[2]
+        self.motor_gain_rl = ll_lr_rr_rl_bl_br[3]
+        self.bias_l = ll_lr_rr_rl_bl_br[4]
+        self.bias_r = ll_lr_rr_rl_bl_br[5]
 
     def update(self, t, light):
         self.update_sensors(t, light.pos)
