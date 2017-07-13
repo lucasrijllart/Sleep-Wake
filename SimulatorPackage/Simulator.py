@@ -71,9 +71,6 @@ class Simulator:
 
         for t in range(1, iteration):
             clock.tick()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    sys.exit()
 
             # conditions for simulation stop: light and maybe out of bounds
             # if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:

@@ -1,5 +1,5 @@
 from Simulator import Simulator
-from Vehicles import BrainVehicle
+from Vehicles import BrainVehicle, ControllableVehicle
 from Light import Light
 import numpy as np
 from Narx import Narx
@@ -55,12 +55,12 @@ class GA:
 
     def _get_all_fitnesses(self, pool):
         i = 0
-        fitnesses = []
+        all_individuals = []
         for individual in pool:
             fitness = self._get_fitness(individual)
-            fitnesses.append([i, individual, fitness])
+            all_individuals.append([i, individual, fitness])
             i += 1
-        return fitnesses
+        return all_individuals
 
     def _get_fitness(self, ind):
         if self.net is None:
@@ -87,6 +87,7 @@ class GA:
 
         else:  # if offline, get fitness by using predictions
             sensor_log = np.array([[], []])
+            wheel_log = []
 
             next_input = np.array(self.data[:, -1])
             data = self.data
@@ -104,13 +105,42 @@ class GA:
                 # 3. feed it to the brain to get motor information
                 wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
                                     (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
-
+                wheel_log.append([wheel_l[0], wheel_r[0]])
                 # 4. add this set of data to the input of the prediction
                 next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
                 # loop back to 1 until reached timestep
 
             # calculate fitness by taking average of sensory predictions
-            return (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
+            # fitness = (sum(sensor_log[0]) + sum(sensor_log[1]))# / len(sensor_log[0])
+
+            sim = Simulator()
+            vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+            vehicle.set_wheels(wheel_log)
+            sim.light = Light([1100, 600])
+            #sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+
+            max_l = float(sensor_log[0].argmax())
+            max_r = float(sensor_log[1].argmax())
+            l = max_l / len(sensor_log[0]) + sensor_log[0].max()
+            r = max_r / len(sensor_log[1]) + sensor_log[1].max()
+            diff = 1 / (1 + abs(l - r))
+            fitness = (max_l + max_r) / 2
+            fitness_after = fitness * diff
+
+            fitness = 0
+            for i in range(1, len(sensor_log[0])):
+                if sensor_log[0][i] > sensor_log[0][i-1]:
+                    fitness += 1
+                else:
+                    fitness -= 1
+                if sensor_log[1][i] > sensor_log[1][i-1]:
+                    fitness += 1
+                else:
+                    fitness -= 1
+            fitness_after = fitness
+
+            print fitness_after
+            return fitness_after
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
@@ -126,12 +156,36 @@ class GA:
             return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
     def _run_winner(self, graphics, ind):  # TODO: remove this as we shouldn't run the winner from starting pos
-        print 'Running: ' + str(ind) + str(self._get_fitness(ind[1]))
-        ind = ind[1]
-        vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
-        vehicle.set_values(ind)
-        # create Simulation
-        self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
+        print 'Running: ' + str(ind)
+        sensor_log = np.array([[], []])
+        wheel_log = []
+
+        next_input = np.array(self.data[:, -1])
+        data = self.data
+        next_input = np.array([[x] for x in next_input])
+        for it in range(0, self.look_ahead):  # loop through the time steps
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+
+            # concatenate to the full data
+            data = np.concatenate((data, next_input), axis=1)
+
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. feed it to the brain to get motor information
+            wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
+                                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
+            wheel_log.append([wheel_l[0], wheel_r[0]])
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+            # loop back to 1 until reached timestep
+
+        sim = Simulator()
+        vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+        vehicle.set_wheels(wheel_log)
+        sim.light = Light([1100, 600])
+        sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
         pool = self._get_all_fitnesses(self._init_pool(individuals))
@@ -171,7 +225,7 @@ class GA:
 
         print '\rFinished GA: %s iter' % (individuals * generations)
         print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
-        # self._run_winner(self.graphics, best_ind)
+        self._run_winner(self.graphics, best_ind[1])
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
@@ -197,7 +251,7 @@ class GA:
         print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.6, mutation_rate=0.3):
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

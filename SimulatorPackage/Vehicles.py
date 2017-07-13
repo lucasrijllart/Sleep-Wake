@@ -22,18 +22,19 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.motor_right = []
 
         # vehicle logic init
-        self.dt = 40  # 80
+        self.dt = 20  # 80
         self.wheel_l, self.wheel_r = 0, 0
+        self.wheel_data = []
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
+        self.previous_pos = []
 
         # weights sensor->motor (lr = left sensor to right wheel)
         self.w_ll, self.w_lr, self.w_rr, self.w_rl = 0, 0, 0, 0
         self.bias_l, self.bias_r = 0, 0
 
-    def set_wheels(self, wheel_l, wheel_r):
-        self.wheel_l = wheel_l
-        self.wheel_r = wheel_r
+    def set_wheels(self, wheel_data):
+        self.wheel_data = wheel_data
 
     def set_values(self, ll, lr, rr, rl, bl, br):
         self.w_ll = ll
@@ -85,11 +86,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [
-            (sensor_l * self.w_ll) + (sensor_r * self.w_rl) + self.bias_l / 80,
-            (sensor_r * self.w_rr) + (sensor_l * self.w_lr) + self.bias_r / 80]
-        self.motor_left.append(self.wheel_l)
-        self.motor_right.append(self.wheel_r)
+        self.wheel_l, self.wheel_r = self.wheel_data.pop(0)
         # print(self.motors[-1])
 
     def update_graphics(self):
