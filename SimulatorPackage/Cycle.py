@@ -6,8 +6,7 @@ import Narx as narx
 import matplotlib.pyplot as plt
 from decimal import Decimal
 from GA import GA
-from Vehicles import BrainVehicle
-from Light import Light
+from Sprites import BrainVehicle, Light
 
 
 def pre_process(raw_data):
@@ -159,4 +158,4 @@ class Cycle:
         new_vehicle = BrainVehicle(self.vehicle.pos[-1], self.vehicle.angle)
         new_vehicle.set_values(self.brain)
         new_vehicle.previous_pos = self.vehicle.pos
-        self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
+        self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle, show_sen_mot_graph=True)

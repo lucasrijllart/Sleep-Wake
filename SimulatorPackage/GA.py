@@ -1,6 +1,5 @@
 from Simulator import Simulator
-from Vehicles import BrainVehicle, ControllableVehicle
-from Light import Light
+from Sprites import BrainVehicle, ControllableVehicle, Light
 import numpy as np
 from Narx import Narx
 import random

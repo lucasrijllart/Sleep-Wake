@@ -4,8 +4,7 @@ import pygame
 import math
 import random
 import matplotlib.pyplot as plt
-from Vehicles import BrainVehicle, RandomMotorVehicle
-from Light import Light
+from Sprites import BrainVehicle, RandomMotorVehicle, Light
 
 
 def show_sensors_motors(screen, vehicle):
