@@ -5,8 +5,8 @@ def load_net(filename='narxNet'):
 
 class Narx:
 
-    def __init__(self, layers=[4, 10, 10, 2], input_delay=5,
-                 output_delay=5):
+    def __init__(self, layers=[4, 10, 10, 2], input_delay=10,
+                 output_delay=10):
         self.layers = layers
         self.out_delay = range(1, output_delay)
         self.in_delay = range(1, input_delay)

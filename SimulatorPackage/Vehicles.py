@@ -22,7 +22,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.motor_right = []
 
         # vehicle logic init
-        self.dt = 40  # 80
+        self.dt = 80
         self.wheel_l, self.wheel_r = 0, 0
         self.wheel_data = []
         self.pos = [start_pos]  # xy position of vehicle
@@ -193,7 +193,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 40
+        self.dt = 80
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [start_pos]  # xy position of vehicle

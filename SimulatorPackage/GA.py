@@ -88,7 +88,6 @@ class GA:
         else:  # if offline, get fitness by using predictions
             sensor_log = np.array([[], []])
             wheel_log = []
-
             next_input = np.array(self.data[:, -1])
             data = self.data
             next_input = np.array([[x] for x in next_input])
@@ -127,20 +126,28 @@ class GA:
             fitness = (max_l + max_r) / 2
             fitness_after = fitness * diff
 
-            fitness = 0
-            for i in range(1, len(sensor_log[0])):
-                if sensor_log[0][i] > sensor_log[0][i-1]:
-                    fitness += 1
-                else:
-                    fitness -= 1
-                if sensor_log[1][i] > sensor_log[1][i-1]:
-                    fitness += 1
-                else:
-                    fitness -= 1
-            fitness_after = fitness
+            Sl = sensor_log[0]
+            Sr = sensor_log[1]
+            wheel_log = np.array(wheel_log)
+            wheel_log = np.transpose(wheel_log)
 
-            print fitness_after
-            return fitness_after
+            # sum = 0
+            # for idx in range(1, len(Sl)):
+            #     sum += (Sl[idx] + Sr[idx] )/2 - (mt.fabs(Sl[idx] - Sl[idx-1]) + mt.fabs(Sr[idx] - Sl[idx-1]))
+            #
+
+            # fit = 0
+            # for idx in range(1, len(Sl)):
+            #     if Sl[idx] > Sl[idx - 1] and Sr[idx] > Sr[idx - 1]:
+            #         fit += 1
+            #     elif Sl[idx] < Sl[idx - 1] or Sr[idx] < Sr[idx - 1]:
+            #         fit += -1.1
+            #     else:
+            #         fit += -1.2
+
+            fit = 0
+
+            return fit
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
@@ -189,7 +196,7 @@ class GA:
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
         pool = self._get_all_fitnesses(self._init_pool(individuals))
-        best_ind = [0, 0, 0]
+        best_ind = [0, [0, 0, 0, 0, 0, 0], 0] # initialize an individual
         for ind in pool:
             if ind[2] > best_ind[2]:
                 best_ind = ind
@@ -232,7 +239,7 @@ class GA:
         return best_ind[1]
 
     def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
+                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
@@ -251,7 +258,7 @@ class GA:
         print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.6, mutation_rate=0.3):
+    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

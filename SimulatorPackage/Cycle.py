@@ -129,7 +129,7 @@ class Cycle:
 
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=True)
+        self.vehicle = self.sim.init_simulation(random_movements+1, graphics=True)
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
@@ -139,7 +139,7 @@ class Cycle:
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
-    def sleep(self, net_filename=None, look_ahead=100):
+    def sleep(self, net_filename=None, look_ahead=100, generations=5):
         if net_filename is not None:
             print 'Loading NARX from file "%s"' % net_filename
             saved_net = narx.load_net(net_filename)
@@ -148,18 +148,20 @@ class Cycle:
 
         # run GA and find best brain to give to testing
         ga = GA()
-        self.brain = ga.run_offline(self.net, self.vehicle_first_move, look_ahead=look_ahead, generations=5)
-        print 'Got best brain: ' + str(self.brain)
+        self.brain = ga.run_offline(self.net, self.vehicle_first_move, look_ahead=look_ahead, generations=generations,
+                                    individuals=10, crossover_rate=0.8, mutation_rate=0.3)
+        print self.brain
+        # TODO: now go to wake testing and resume the simulation with the new brain
+
 
     def wake_testing(self):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         new_vehicle = BrainVehicle(self.vehicle.pos[-1], self.vehicle.angle)
+
         new_vehicle.set_values(self.brain)
         new_vehicle.previous_pos = self.vehicle.pos
         self.sim.run_simulation(iteration=400, graphics=True, vehicle=new_vehicle)
         self.sim.close()
         pass
 
-    def get_controls(self):
-        pass
