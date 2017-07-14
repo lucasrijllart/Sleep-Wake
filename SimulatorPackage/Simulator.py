@@ -59,8 +59,10 @@ class Simulator:
         self.number_of_iterations = 0
         self.light = None
 
-    def run_simulation(self, iteration, graphics, vehicle, show_sen_mot_graph=False):
+    def run_simulation(self, iteration, graphics, vehicle, light=None, show_sen_mot_graph=False):
         clock = pygame.time.Clock()  # clock to count ticks and fps
+        if light is not None:  # if a light is provided then update the light to this
+            self.light = light
         all_sprites = pygame.sprite.RenderPlain(vehicle, self.light)
         if graphics:
             screen = pygame.display.set_mode((self.window_width, self.window_height))

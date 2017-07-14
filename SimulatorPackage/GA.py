@@ -25,6 +25,7 @@ class GA:
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
         self.look_ahead = None
+        self.offline = None
 
         self.sim = Simulator()
 
@@ -63,7 +64,7 @@ class GA:
         return all_individuals
 
     def _get_fitness(self, ind):
-        if self.net is None:
+        if self.offline is False:
             # create sprites
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
             vehicle.set_values(ind)
@@ -88,6 +89,7 @@ class GA:
         else:  # if offline, get fitness by using predictions
             sensor_log = np.array([[], []])
             wheel_log = []
+
             next_input = np.array(self.data[:, -1])
             data = self.data
             next_input = np.array([[x] for x in next_input])
@@ -118,36 +120,18 @@ class GA:
             sim.light = Light([1100, 600])
             #sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
 
-            max_l = float(sensor_log[0].argmax())
-            max_r = float(sensor_log[1].argmax())
-            l = max_l / len(sensor_log[0]) + sensor_log[0].max()
-            r = max_r / len(sensor_log[1]) + sensor_log[1].max()
-            diff = 1 / (1 + abs(l - r))
-            fitness = (max_l + max_r) / 2
-            fitness_after = fitness * diff
+            wheel_log = np.transpose(np.array(wheel_log))
+            fitness_after = 0
+            for i in range(0, len(sensor_log[0])):
+                v = abs(wheel_log[0][i] + wheel_log[1][i])
+                diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
+                max_ = max(sensor_log[0][i], sensor_log[1][i])
+                avg = (sensor_log[0][i] + sensor_log[1][i]) / 2
+                fitness = ((v * (1 - diff)) / max_)
+                fitness_after += fitness
+            fitness_after /= len(sensor_log[0])
 
-            Sl = sensor_log[0]
-            Sr = sensor_log[1]
-            wheel_log = np.array(wheel_log)
-            wheel_log = np.transpose(wheel_log)
-
-            # sum = 0
-            # for idx in range(1, len(Sl)):
-            #     sum += (Sl[idx] + Sr[idx] )/2 - (mt.fabs(Sl[idx] - Sl[idx-1]) + mt.fabs(Sr[idx] - Sl[idx-1]))
-            #
-
-            # fit = 0
-            # for idx in range(1, len(Sl)):
-            #     if Sl[idx] > Sl[idx - 1] and Sr[idx] > Sr[idx - 1]:
-            #         fit += 1
-            #     elif Sl[idx] < Sl[idx - 1] or Sr[idx] < Sr[idx - 1]:
-            #         fit += -1.1
-            #     else:
-            #         fit += -1.2
-
-            fit = 0
-
-            return fit
+            return fitness_after
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
@@ -162,48 +146,53 @@ class GA:
             new_fit = self._get_fitness(ind1)
             return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
-    def _run_winner(self, graphics, ind):  # TODO: remove this as we shouldn't run the winner from starting pos
-        print 'Running: ' + str(ind)
-        sensor_log = np.array([[], []])
-        wheel_log = []
+    def _run_winner(self, graphics, ind):
+        if self.offline:
+            print 'Running: ' + str(ind)
+            sensor_log = np.array([[], []])
+            wheel_log = []
 
-        next_input = np.array(self.data[:, -1])
-        data = self.data
-        next_input = np.array([[x] for x in next_input])
-        for it in range(0, self.look_ahead):  # loop through the time steps
-            # 1. predict next sensory output
-            prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+            next_input = np.array(self.data[:, -1])
+            data = self.data
+            next_input = np.array([[x] for x in next_input])
+            for it in range(0, self.look_ahead):  # loop through the time steps
+                # 1. predict next sensory output
+                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
 
-            # concatenate to the full data
-            data = np.concatenate((data, next_input), axis=1)
+                # concatenate to the full data
+                data = np.concatenate((data, next_input), axis=1)
 
-            # 2. log predicted sensory information to list (used for fitness)
-            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+                # 2. log predicted sensory information to list (used for fitness)
+                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
-            # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
-                                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
-            wheel_log.append([wheel_l[0], wheel_r[0]])
-            # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
-            # loop back to 1 until reached timestep
+                # 3. feed it to the brain to get motor information
+                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
+                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
+                wheel_log.append([wheel_l[0], wheel_r[0]])
+                # 4. add this set of data to the input of the prediction
+                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+                # loop back to 1 until reached timestep
 
-        sim = Simulator()
-        vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
-        vehicle.set_wheels(wheel_log)
-        sim.light = Light([1100, 600])
-        sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+            sim = Simulator()
+            vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+            vehicle.set_wheels(wheel_log)
+            sim.light = Light([1100, 600])
+            sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+        else:
+            print 'Running: ' + str(ind) + str(self._get_fitness(ind))
+            vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
+            vehicle.set_values(ind)
+            # create Simulation
+            self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
         pool = self._get_all_fitnesses(self._init_pool(individuals))
-        best_ind = [0, [0, 0, 0, 0, 0, 0], 0] # initialize an individual
+        best_ind = [0, [0, 0, 0, 0, 0, 0], -1000]
         for ind in pool:
             if ind[2] > best_ind[2]:
                 best_ind = ind
         best_fit = [best_ind[2]]
         for generation in range(0, individuals * generations):
-            print '\riter: ' + str(generation) + '/' + str(individuals * generations),
-
             # find 2 random individuals
             rand_ind1 = random.randint(0, individuals - 1)
             rand_ind2 = random.randint(0, individuals - 1)
@@ -211,6 +200,7 @@ class GA:
                 rand_ind2 = random.randint(0, individuals - 1)
             # compare fitnesses
             ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
+            print '\riter: ' + str(generation) + '/' + str(individuals * generations) + ' ' + str(fit),
 
             # check who is winner and overwrite their stats
             if loser == 1:
@@ -238,12 +228,14 @@ class GA:
 
         return best_ind[1]
 
-    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
+    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=None, light_pos=None,
+                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
             veh_pos = [300, 300]
+        if veh_angle is None:
+            veh_angle = random.randint(0, 360)
         self.net = narx
         self.data = data
         self.look_ahead = look_ahead
@@ -251,21 +243,25 @@ class GA:
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
         self.light = Light(light_pos)
+        self.offline = True
 
-        start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
-        self.iterations = int(start_light_dist / 4)  # Halved number to limit num of frames and tested with a big dist
+        # Uncomment this to run GA with simulation
+        # print 'Starting GA with simulation'
+        # self.run(veh_pos, veh_angle, light_pos)
+        # self.offline = True
 
         print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=5, crossover_rate=0.6, mutation_rate=0.3):
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
         self.light = Light(light_pos)
+        self.offline = False
 
         start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
         print 'vehicle available frames: ' + str(start_light_dist)
-        self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames and tested with a big dist
+        self.iterations = int(start_light_dist / 4)  # Halved number to limit num of frames and tested with a big dist
 
         self._start_ga(individuals, generations, crossover_rate, mutation_rate)
