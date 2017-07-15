@@ -43,13 +43,31 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
     return pre_process(data)
 
 
-def show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
-                     real_right, predictions_left, predictions_right):
+def error_graph(net, testing_time, input_delay=None, output_delay=None, max_epochs=None, vehicle_runs=None,
+                vehicle_iter=None, test_runs=1, network_name=None):
     """ Presents a graph with both sensors' real and predicted values and their mean squared error """
+
+    test_input, test_target = collect_random_data(runs=test_runs, vehicle_angle=random.randint(0, 360),
+                                                  iterations=testing_time)
+    # extract predictions and compare with test
+    predictions = net.predict(test_input)
+    predictions_left = predictions[0]
+    predictions_right = predictions[1]
+    real_left = np.array(test_target)[0]
+    real_right = np.array(test_target)[1]
+
+    # calculate mean squared error
+    mse1 = [(predictions_left[it] - real_left[it]) ** 2 / len(predictions_left) for it in
+            range(0, len(real_left))]
+    mse2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) for it in
+            range(0, len(real_right))]
+
     i = np.array(range(0, len(real_left)))
     plt.figure(1)
-    plt.suptitle('Results for: veh_runs=' + str(vehicle_runs) + ' veh_iter=' + str(vehicle_iter) + ' delays=' +
-                 str(input_delay) + ':' + str(output_delay) + ' net_iter:' + str(net_max_iter))
+    if network_name is None:
+        plt.suptitle('Results for: veh_runs=%s veh_iter=%s delays=%s:%s epoch:%s') % (vehicle_runs, vehicle_iter, input_delay, output_delay, max_epochs)
+    else:
+        plt.suptitle('Prediction results for network: ' + str(network_name))
     plt.subplot(221)
     plt.title('Left sensor MSE. Mean:' + '%.4E' % Decimal(str(np.mean(mse1))))
     plt.plot(range(0, len(mse1)), mse1)
@@ -60,11 +78,11 @@ def show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_
 
     plt.subplot(223)
     plt.title('Left sensor values b=real, r=pred')
-    plt.plot(i, real_left, 'b', i, predictions_left, 'r')
+    plt.plot(i, real_left, 'b', i, predictions_left[:len(real_left)], 'r')
 
     plt.subplot(224)
     plt.title('Right sensor values b=real, r=pred')
-    plt.plot(i, real_right, 'b', i, predictions_right, 'r')
+    plt.plot(i, real_right, 'b', i, predictions_right[:len(real_right)], 'r')
 
     plt.show()
 
@@ -75,56 +93,39 @@ class Cycle:
 
         self.net = None  # NARX network
         self.vehicle = None
-        self.brain = [0, 0, 0, 0]  # Vehicle brain, 4 weights
+        self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain, 6 weights
         self.vehicle_first_move = None
 
         self.sim = None
 
         self.count_cycles = 0
 
-    def train_network(self, vehicle_runs, vehicle_iter, test_iter, input_delay, output_delay, net_max_iter, test_seed,
-                      show_graph, test_runs=1):
+    def train_network(self, learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
+                      show_error_graph):
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=vehicle_runs, iterations=vehicle_iter)
-        test_input, test_target = collect_random_data(runs=test_runs, vehicle_angle=100,
-                                                      iterations=test_iter)
+        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time)
 
-        # Training of network
-
+        # creation of network
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
-        self.net.train(train_input, train_target, verbose=True, max_iter=net_max_iter)
+        self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
 
         # save network to file
         self.net.save_to_file(filename='testNARX2')
-        # Predicting of sensory outputs
 
-        # extract predictions and compare with test
-        predictions = self.net.predict(test_input)
-        predictions_left = predictions[0]
-        predictions_right = predictions[1]
-        real_left = np.array(test_target)[0]
-        real_right = np.array(test_target)[1]
+        # Show error graph for trained network
+        if show_error_graph:
+            show_error_graph(self.net, learning_runs, learning_time, testing_time, input_delay, output_delay,
+                             max_epochs)
 
-        # calculate mean squared error
-        mse1 = [(predictions_left[it] - real_left[it]) ** 2 / len(predictions_left) for it in
-                range(0, len(predictions_left))]
-        mse2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) for it in
-                range(0, len(predictions_right))]
-
-        # Show results
-        if show_graph:
-            show_error_graph(vehicle_runs, vehicle_iter, input_delay, output_delay, net_max_iter, mse1, mse2, real_left,
-                             real_right, predictions_left, predictions_right)
-
-    def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400, testing_time=400,
-                      input_delay=5, output_delay=5, max_epochs=50, test_seed=200, show_graph=False):
+    def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400, testing_time=500,
+                      input_delay=5, output_delay=5, max_epochs=50, show_error_graph=False):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
         if train_network:
             self.train_network(learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
-                               test_seed, show_graph)
+                               show_error_graph)
 
         # Create vehicle in simulation
         self.sim = Simulator()
@@ -138,12 +139,15 @@ class Cycle:
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
-    def sleep(self, net_filename=None, look_ahead=100, individuals=25, generations=10):
+    def sleep(self, net_filename=None, look_ahead=100, individuals=25, generations=10, show_error_graph=False):
         if net_filename is not None:
             print 'Loading NARX from file "%s"' % net_filename
             saved_net = narx.load_net(net_filename)
             self.net = Narx()
             self.net.set_net(saved_net)
+
+        if show_error_graph:
+            error_graph(self.net, 1000, network_name=net_filename)
 
         # run GA and find best brain to give to testing
         ga = GA()
@@ -158,4 +162,5 @@ class Cycle:
         new_vehicle = BrainVehicle(self.vehicle.pos[-1], self.vehicle.angle)
         new_vehicle.set_values(self.brain)
         new_vehicle.previous_pos = self.vehicle.pos
-        self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle, show_sen_mot_graph=True)
+        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
+
