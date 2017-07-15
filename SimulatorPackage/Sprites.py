@@ -28,6 +28,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.previous_pos = []
+        self.brain = []
 
         # weights sensor->motor (lr = left sensor to right wheel)
         self.w_ll, self.w_lr, self.w_rr, self.w_rl = 0, 0, 0, 0
@@ -87,6 +88,8 @@ class ControllableVehicle(pygame.sprite.Sprite):
 
         # calculate motor intensity
         self.wheel_l, self.wheel_r = self.wheel_data.pop(0)
+        self.motor_left.append(self.wheel_l)
+        self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
 
     def update_graphics(self):

@@ -95,6 +95,7 @@ class Cycle:
         self.vehicle = None
         self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain, 6 weights
         self.vehicle_first_move = None
+        self.sensors = None
 
         self.sim = None
 
@@ -112,7 +113,7 @@ class Cycle:
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
 
         # save network to file
-        self.net.save_to_file(filename='testNARX2')
+        self.net.save_to_file(filename='narx/testNARX2')
 
         # Show error graph for trained network
         if show_error_graph:
@@ -151,9 +152,10 @@ class Cycle:
 
         # run GA and find best brain to give to testing
         ga = GA()
-        self.brain = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
-                                    veh_angle=self.vehicle.angle, look_ahead=look_ahead, individuals=individuals,
-                                    generations=generations, crossover_rate=0.4, mutation_rate=0.6)
+        self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
+                                                  veh_angle=self.vehicle.angle, look_ahead=look_ahead,
+                                                  individuals=individuals, generations=generations, crossover_rate=0.4,
+                                                  mutation_rate=0.6)
         print 'Got best brain: ' + str(self.brain)
 
     def wake_testing(self, iterations):
@@ -164,3 +166,16 @@ class Cycle:
         new_vehicle.previous_pos = self.vehicle.pos
         actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
 
+        '''
+        # get sensory information of vehicle and compare with predicted
+        plt.figure(1)
+        i = np.array(range(0, len(actual_vehicle.sensor_left)))
+        plt.subplot(221)
+        plt.title('Left sensor values b=real, r=pred')
+        plt.plot(i, actual_vehicle.sensor_left, 'b', i, self.sensors[0][:-1], 'r')
+
+        plt.subplot(222)
+        plt.title('Right sensor values b=real, r=pred')
+        plt.plot(i, actual_vehicle.sensor_right, 'b', i, self.sensors[1][:-1], 'r')
+        plt.show()
+        '''

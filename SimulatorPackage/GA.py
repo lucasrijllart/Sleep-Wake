@@ -172,17 +172,44 @@ class GA:
                 next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
                 # loop back to 1 until reached timestep
 
+            wheels = np.copy(wheel_log)
             sim = Simulator()
             vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
             vehicle.set_wheels(wheel_log)
             sim.light = Light([1100, 600])
-            sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+            vehicle = sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+
+            wheels2 = np.transpose(wheels)
+            # get sensory information of vehicle and compare with predicted
+            plt.figure(1)
+            i = np.array(range(0, len(vehicle.sensor_left)))
+            plt.subplot(221)
+            plt.title('Left sensor values b=real, r=pred')
+            plt.plot(i, vehicle.sensor_left, 'b', i, sensor_log[0][:-1], 'r')
+
+            plt.subplot(222)
+            plt.title('Right sensor values b=real, r=pred')
+            plt.plot(i, vehicle.sensor_right, 'b', i, sensor_log[1][:-1], 'r')
+
+            plt.subplot(223)
+            plt.title('Left motor values b=real, r=pred')
+            plt.plot(i, vehicle.motor_left, 'b', i, wheels2[0][:-1], 'r')
+
+            plt.subplot(224)
+            plt.title('Right motor values b=real, r=pred')
+            plt.plot(i, vehicle.motor_right, 'b', i, wheels2[1][:-1], 'r')
+            plt.show()
+
+            return sensor_log
+
         else:
             print 'Running: ' + str(ind) + str(self._get_fitness(ind))
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
             vehicle.set_values(ind)
             # create Simulation
-            self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
+            vehicle = self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
+            sensor_log = np.transpose([vehicle.sensor_left, vehicle.sensor_right])  # not tested
+            return sensor_log
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
         pool = self._get_all_fitnesses(self._init_pool(individuals))
@@ -221,11 +248,11 @@ class GA:
 
         print '\rFinished GA: %s iter' % (individuals * generations)
         print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
-        self._run_winner(self.graphics, best_ind[1])
+        sensor_log = self._run_winner(self.graphics, best_ind[1])
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-        return best_ind[1]
+        return [best_ind[1], sensor_log]
 
     def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=None, light_pos=None,
                     individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
