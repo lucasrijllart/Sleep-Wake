@@ -43,55 +43,17 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
     return pre_process(data)
 
 
-def error_graph(net, testing_time, input_delay=None, output_delay=None, max_epochs=None, vehicle_runs=None,
-                vehicle_iter=None, test_runs=1, network_name=None):
-    """ Presents a graph with both sensors' real and predicted values and their mean squared error """
-
-    test_input, test_target = collect_random_data(runs=test_runs, vehicle_angle=random.randint(0, 360),
-                                                  iterations=testing_time)
-    # extract predictions and compare with test
-    predictions = net.predict(test_input)
-    predictions_left = predictions[0]
-    predictions_right = predictions[1]
-    real_left = np.array(test_target)[0]
-    real_right = np.array(test_target)[1]
-
-    # calculate mean squared error
-    mse1 = [(predictions_left[it] - real_left[it]) ** 2 / len(predictions_left) for it in
-            range(0, len(real_left))]
-    mse2 = [(predictions_right[it] - real_right[it]) ** 2 / len(predictions_right) for it in
-            range(0, len(real_right))]
-
-    i = np.array(range(0, len(real_left)))
-    plt.figure(1)
-    if network_name is None:
-        plt.suptitle('Results for: veh_runs=%s veh_iter=%s delays=%s:%s epoch:%s') % (vehicle_runs, vehicle_iter, input_delay, output_delay, max_epochs)
-    else:
-        plt.suptitle('Prediction results for network: ' + str(network_name))
-    plt.subplot(221)
-    plt.title('Left sensor MSE. Mean:' + '%.4E' % Decimal(str(np.mean(mse1))))
-    plt.plot(range(0, len(mse1)), mse1)
-
-    plt.subplot(222)
-    plt.title('Right sensor MSE. Mean:' + '%.4E' % Decimal(str(np.mean(mse2))))
-    plt.plot(range(0, len(mse2)), mse2)
-
-    plt.subplot(223)
-    plt.title('Left sensor values b=real, r=pred')
-    plt.plot(i, real_left, 'b', i, predictions_left[:len(real_left)], 'r')
-
-    plt.subplot(224)
-    plt.title('Right sensor values b=real, r=pred')
-    plt.plot(i, real_right, 'b', i, predictions_right[:len(real_right)], 'r')
-
-    plt.show()
-
-
 class Cycle:
 
-    def __init__(self):
+    def __init__(self, net_filename=None):
 
         self.net = None  # NARX network
+        if net_filename is not None:
+            print 'Loading NARX from file "%s"' % net_filename
+            saved_net = narx.load_net(net_filename)
+            self.net = Narx()
+            self.net.set_net(saved_net)
+
         self.vehicle = None
         self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain, 6 weights
         self.vehicle_first_move = None
@@ -101,10 +63,99 @@ class Cycle:
 
         self.count_cycles = 0
 
+    def show_error_graph(self, testing_time=400, predict_after=100, brain=None):
+        """ CHANGE THIS Presents a graph with both sensors' real and predicted values and their mean squared error """
+        if self.net is None:
+            print 'No network found'
+            return
+        # Lookahead is testing time - predict after
+        look_ahead = testing_time - predict_after
+        print 'Lookahead: ' + str(look_ahead)
+        # Create random brain and give it to vehicle
+        if brain is not None:
+            random_brain = brain
+        else:
+            random_brain = [random.uniform(-8, 8) for x in range(0, 6)]
+        print random_brain
+        vehicle = BrainVehicle(start_pos=[300, 300], start_angle=200)
+        vehicle.set_values(random_brain)
+        # Create simulation, run vehicle in it, and collect its sensory and motor information
+        sim = Simulator()
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=random_brain)
+        sensor_motor = []
+        for x in range(0, testing_time):
+            sensor_motor.append(
+                [vehicle.motor_left[x], vehicle.motor_right[x], vehicle.sensor_left[x], vehicle.sensor_right[x]])
+        sensor_motor = np.transpose(np.array(sensor_motor))
+        print sensor_motor.shape
+
+        data = np.array(sensor_motor[:, :predict_after])  # data up until the initial run time
+        sensor_log = np.array([[], []])
+        wheel_log = []
+
+        next_input = np.array(data[:, -1])
+        next_input = np.array([[x] for x in next_input])
+        for it in range(0, look_ahead):  # loop through the time steps
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+
+            # concatenate to the full data
+            data = np.concatenate((data, next_input), axis=1)
+
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. feed it to the brain to get motor information
+            wheel_l, wheel_r = [
+                (prediction[0] * random_brain[0]) + (prediction[1] * random_brain[3]) + random_brain[4] / 80,
+                (prediction[1] * random_brain[2]) + (prediction[0] * random_brain[1]) + random_brain[5] / 80]
+            wheel_log.append([wheel_l[0], wheel_r[0]])
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+            # loop back to 1 until reached timestep
+
+        print wheel_log
+        wheel_log = np.transpose(np.array(wheel_log))
+
+        print sensor_motor[2][:predict_after].shape
+        print sensor_log[0].shape
+
+        sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
+        print sensor_left.shape
+
+        sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
+        print sensor_right.shape
+
+        motor_left = np.concatenate((sensor_motor[0][:predict_after], wheel_log[0]))
+        print motor_left.shape
+
+        motor_right = np.concatenate((sensor_motor[1][:predict_after], wheel_log[1]))
+        print motor_right.shape
+
+        # get sensory information of vehicle and compare with predicted
+        plt.figure(1)
+        i = np.array(range(0, len(vehicle.sensor_left)))
+        plt.subplot(221)
+        plt.title('Left sensor values b=real, r=pred')
+        plt.plot(i, vehicle.sensor_left, 'b', i, sensor_left, 'r')
+
+        plt.subplot(222)
+        plt.title('Right sensor values b=real, r=pred')
+        plt.plot(i, vehicle.sensor_right, 'b', i, sensor_right, 'r')
+
+        plt.subplot(223)
+        plt.title('Left motor values b=real, r=pred')
+        plt.plot(i, vehicle.motor_left, 'b', i, motor_left, 'r')
+
+        plt.subplot(224)
+        plt.title('Right motor values b=real, r=pred')
+        plt.plot(i, vehicle.motor_right, 'b', i, motor_right, 'r')
+        plt.show()
+
     def train_network(self, learning_runs, learning_time, testing_time, input_delay, output_delay, max_epochs,
                       show_error_graph):
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time)
+        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
 
         # creation of network
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
@@ -114,11 +165,6 @@ class Cycle:
 
         # save network to file
         self.net.save_to_file(filename='narx/testNARX2')
-
-        # Show error graph for trained network
-        if show_error_graph:
-            show_error_graph(self.net, learning_runs, learning_time, testing_time, input_delay, output_delay,
-                             max_epochs)
 
     def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400, testing_time=500,
                       input_delay=5, output_delay=5, max_epochs=50, show_error_graph=False):
@@ -140,16 +186,7 @@ class Cycle:
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
-    def sleep(self, net_filename=None, look_ahead=100, individuals=25, generations=10, show_error_graph=False):
-        if net_filename is not None:
-            print 'Loading NARX from file "%s"' % net_filename
-            saved_net = narx.load_net(net_filename)
-            self.net = Narx()
-            self.net.set_net(saved_net)
-
-        if show_error_graph:
-            error_graph(self.net, 1000, network_name=net_filename)
-
+    def sleep(self,look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
         ga = GA()
         self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],

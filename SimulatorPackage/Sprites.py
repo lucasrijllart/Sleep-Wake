@@ -168,9 +168,10 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.sensor_right.append(sensor_r)
         # print('sl:', sensor_l, 'sr:', sensor_r)
 
+        # smooth out formula, add bias maybe
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [self.wheel_l + 0.05 * (-self.wheel_l + random.uniform(-1, 1)),
-                                      self.wheel_r + 0.05 * (-self.wheel_r + random.uniform(-1, 1))]
+        self.wheel_l, self.wheel_r = [self.wheel_l + 0.05 * (-self.wheel_l + random.uniform(-1, 1)) + 0.01,
+                                      self.wheel_r + 0.05 * (-self.wheel_r + random.uniform(-1, 1)) + 0.01]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
