@@ -152,7 +152,7 @@ class Cycle:
         plt.plot(i, vehicle.motor_right, 'b', i, motor_right, 'r')
         plt.show()
 
-    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs):
+    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename):
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
 
@@ -163,14 +163,14 @@ class Cycle:
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
 
         # save network to file
-        self.net.save_to_file(filename='narx/testNARX2')
+        self.net.save_to_file(filename=filename)
 
     def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400,
                       input_delay=5, output_delay=5, max_epochs=50):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
-        if train_network:
-            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs)
+        if train_network is not None:
+            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, train_network)
 
         # Create vehicle in simulation
         self.sim = Simulator()

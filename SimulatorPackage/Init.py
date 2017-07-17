@@ -1,12 +1,12 @@
 from Cycle import Cycle
 import time
 
-learning_runs = 5
-learning_time = 500
-testing_time = 100
-input_delay = 10
-output_delay = 10
+learning_runs = 50
+learning_time = 300
+input_delay = 100
+output_delay = 100
 max_epochs = 100
+train_network = 'r50t300d100-100'
 
 random_movement = 50
 look_ahead = 400
@@ -15,7 +15,7 @@ start_time = time.time()
 
 cycle = Cycle(net_filename='narx/testNARX')
 
-cycle.wake_learning(random_movement, train_network=False, learning_runs=learning_runs, learning_time=learning_time,
+cycle.wake_learning(random_movement, train_network=train_network, learning_runs=learning_runs, learning_time=learning_time,
                     input_delay=input_delay, output_delay=output_delay, max_epochs=max_epochs)
 
 print 'Time to train: ' + str(time.time() - start_time)
