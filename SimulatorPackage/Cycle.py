@@ -1,5 +1,5 @@
 import numpy as np
-import random
+import random, time
 from Simulator import Simulator
 from Narx import Narx
 import Narx as narx
@@ -157,6 +157,7 @@ class Cycle:
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
 
         # creation of network
+        start_time = time.time()
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
@@ -164,6 +165,7 @@ class Cycle:
 
         # save network to file
         self.net.save_to_file(filename=filename)
+        print 'Finished training network "%s" in %ds' % (filename, time.time()-start_time)
 
     def wake_learning(self, random_movements, train_network=None, learning_runs=4, learning_time=400,
                       input_delay=5, output_delay=5, max_epochs=50):
