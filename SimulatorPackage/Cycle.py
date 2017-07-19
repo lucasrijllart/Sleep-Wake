@@ -165,7 +165,7 @@ class Cycle:
         # save network to file
         self.net.save_to_file(filename=filename)
 
-    def wake_learning(self, random_movements, train_network, learning_runs=4, learning_time=400,
+    def wake_learning(self, random_movements, train_network=None, learning_runs=4, learning_time=400,
                       input_delay=5, output_delay=5, max_epochs=50):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved

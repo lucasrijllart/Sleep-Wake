@@ -6,7 +6,7 @@ learning_time = 300
 input_delay = 100
 output_delay = 100
 max_epochs = 100
-train_network = 'r50t300d100-100'
+train_network = 'r50t300d200-200'
 
 random_movement = 50
 look_ahead = 400
