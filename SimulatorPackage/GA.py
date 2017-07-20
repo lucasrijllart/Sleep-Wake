@@ -95,7 +95,7 @@ class GA:
                 # 1. predict next sensory output
                 prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
                 # concatenate to the full data
-                if it != -1:
+                if it != 0:
                     data = np.concatenate((data, next_input), axis=1)
 
                 # 2. log predicted sensory information to list (used for fitness)

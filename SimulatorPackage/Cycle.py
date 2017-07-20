@@ -23,10 +23,13 @@ def pre_process(raw_data):
 def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000, graphics=False,
                         gamma=0.2, seed=None):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
+    random_brains = 0
     if vehicle_pos is None:
         vehicle_pos = [300, 300]  # [random.randint(25, 1215), random.randint(25, 695)]
     if vehicle_angle_rand is False:
         vehicle_angle = 200
+    else:
+        vehicle_angle = random.randint(0, 360)
     if light_pos is None:
         light_pos = [1100, 600]
     # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
@@ -35,12 +38,16 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
     for run in range(0, runs):
         if vehicle_angle_rand:  # update angle for each vehicle
             vehicle_angle = random.randint(0, 360)
-        v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed)
+        brain = None
+        if random.random() < 0.3:  # 30% chance of vehicle being a random brain
+            brain = [random.uniform(-8, 8) for _ in range(0, 6)]
+            random_brains += 1
+        v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
-    print 'Collected data from ' + str(runs) + ' vehicles over ' + str(iterations) + ' iterations'
+    print 'Collected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
     return pre_process(data)
 
 
@@ -50,10 +57,11 @@ class Cycle:
 
         self.net = None  # NARX network
         if net_filename is not None:
-            print 'Loading NARX from file "%s"' % net_filename
+            start_time = time.time()
             saved_net = narx.load_net(net_filename)
             self.net = Narx()
             self.net.set_net(saved_net)
+            print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time()-start_time)
 
         self.vehicle = None
         self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain assigned after GA, 6 weights
@@ -65,18 +73,18 @@ class Cycle:
         self.count_cycles = 0
 
     def show_error_graph(self, testing_time=400, predict_after=100, brain=None):
-        """ CHANGE THIS Presents a graph with both sensors' real and predicted values and their mean squared error """
+        """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
-            print 'No network found'
+            print 'Show error graph exception: No network found'
             return
         # Lookahead is testing time - predict after
         look_ahead = testing_time - predict_after
-        print 'Lookahead: ' + str(look_ahead)
+        print 'Error graph\nLookahead: ' + str(look_ahead)
         # Create random brain and give it to vehicle
         if brain is not None:
             brain = brain
         else:
-            brain = [random.uniform(-8, 8) for x in range(0, 6)]
+            brain = [random.uniform(-8, 8) for _ in range(0, 6)]
         print brain
         vehicle = BrainVehicle(start_pos=[300, 300], start_angle=200)
         vehicle.set_values(brain)
@@ -101,7 +109,8 @@ class Cycle:
             prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
 
             # concatenate to the full data
-            data = np.concatenate((data, next_input), axis=1)
+            if it != 0:  # don't do it for the first values as they are already present
+                data = np.concatenate((data, next_input), axis=1)
 
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
