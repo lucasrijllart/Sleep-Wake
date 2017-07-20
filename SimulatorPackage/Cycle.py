@@ -104,23 +104,38 @@ class Cycle:
 
         next_input = np.array(data[:, -1])
         next_input = np.array([[x] for x in next_input])
-        for it in range(0, look_ahead):  # loop through the time steps
+
+        # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+        # 1. predict next sensory output
+        prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
+        # 2. log predicted sensory information to list (used for fitness)
+        sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+        # 3. feed it to the brain to get motor information
+        wheel_l, wheel_r = [
+            (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
+            (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+        wheel_log.append([wheel_l[0], wheel_r[0]])
+
+        # 4. add this set of data to the input of the prediction
+        next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+
+        for it in range(1, look_ahead):  # loop through the time steps
             # 1. predict next sensory output
             prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
-            # concatenate to the full data
-            if it != 0:  # don't do it for the first values as they are already present
-                data = np.concatenate((data, next_input), axis=1)
 
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
             # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [
-                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
-                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+            wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
+                                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
             wheel_log.append([wheel_l[0], wheel_r[0]])
-            # 4. add this set of data to the input of the prediction
+
+            # 4. concatenate previous step to the full data
+            data = np.concatenate((data, next_input), axis=1)
+
+            # 5. set the predicted data to the next input of the prediction
             next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
             # loop back to 1 until reached timestep
 

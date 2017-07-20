@@ -18,7 +18,7 @@ cycle.wake_learning(intial_random_movement, train_network=train_network, learnin
                     max_epochs=max_epochs)
 
 brain = [-2, 8, -2, 8, 5, 5]
-cycle.show_error_graph(testing_time=80, predict_after=40, brain=None)
+cycle.show_error_graph(testing_time=80, predict_after=40, brain=brain)
 
 # cycle.sleep(look_ahead=look_ahead, individuals=30, generations=10)
 
