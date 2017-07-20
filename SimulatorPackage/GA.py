@@ -88,20 +88,18 @@ class GA:
         else:  # if offline, get fitness by using predictions
             sensor_log = np.array([[], []])
             wheel_log = []
-
             next_input = np.array(self.data[:, -1])
             data = self.data
             next_input = np.array([[x] for x in next_input])
             for it in range(0, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
                 prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
                 # concatenate to the full data
-                data = np.concatenate((data, next_input), axis=1)
+                if it != -1:
+                    data = np.concatenate((data, next_input), axis=1)
 
                 # 2. log predicted sensory information to list (used for fitness)
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
                 # 3. feed it to the brain to get motor information
                 wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
                                     (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
@@ -119,18 +117,48 @@ class GA:
             sim.light = Light([1100, 600])
             #sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
 
-            wheel_log = np.transpose(np.array(wheel_log))
-            fitness_after = 0
-            for i in range(0, len(sensor_log[0])):
-                v = abs(wheel_log[0][i] + wheel_log[1][i])
-                diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
-                max_ = max(sensor_log[0][i], sensor_log[1][i])
-                avg = (sensor_log[0][i] + sensor_log[1][i]) / 2
-                fitness = ((v * (1 - diff)) / max_)
-                fitness_after += fitness
-            fitness_after /= len(sensor_log[0])
+            # wheel_log = np.transpose(np.array(wheel_log))
+            # fitness_after = 0
+            # for i in range(0, len(sensor_log[0])):
+            #     v = abs(wheel_log[0][i] + wheel_log[1][i])
+            #     diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
+            #     max_ = max(sensor_log[0][i], sensor_log[1][i])
+            #     avg = (sensor_log[0][i] + sensor_log[1][i]) / 2
+            #     fitness = ((v * (1 - diff)) / max_)
+            #     fitness_after += fitness
+            # fitness_after /= len(sensor_log[0])
+            #
+            # return fitness_after
 
-            return fitness_after
+            Sl = sensor_log[0]
+            Sr = sensor_log[1]
+            wheel_log = np.array(wheel_log)
+            wheel_log = np.transpose(wheel_log)
+
+            # sum = 0
+            # for idx in range(1, len(Sl)):
+            #     sum += (Sl[idx] + Sr[idx] )/2 - (mt.fabs(Sl[idx] - Sl[idx-1]) + mt.fabs(Sr[idx] - Sl[idx-1]))
+            #
+
+            # fit = 0
+            # for idx in range(1, len(Sl)):
+            #     if Sl[idx] > Sl[idx - 1] and Sr[idx] > Sr[idx - 1]:
+            #         fit += 1
+            #     elif Sl[idx] < Sl[idx - 1] or Sr[idx] < Sr[idx - 1]:
+            #         fit += -1.1
+            #     else:
+            #         fit += -1.2
+
+            fitness = 0
+            for i in range(0, len(Sl)):
+                vA = (wheel_log[0][i] + wheel_log[1][i])/2
+                diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
+                sA = (sensor_log[0][i] + sensor_log[1][i])
+                smax = max(sensor_log[0][i] ,sensor_log[1][i])
+                fitness += vA * (5 - diff) * (4 - smax) + sA
+            fitness /= len(Sl)
+
+            return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
@@ -152,7 +180,7 @@ class GA:
             wheel_log = []
 
             next_input = np.array(self.data[:, -1])
-            data = self.data
+            data = self.data # check if that is only the first 100 data
             next_input = np.array([[x] for x in next_input])
             for it in range(0, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
@@ -213,12 +241,14 @@ class GA:
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
         pool = self._get_all_fitnesses(self._init_pool(individuals))
-        best_ind = [0, [0, 0, 0, 0, 0, 0], -1000]
+        best_ind = [0, [0, 0, 0, 0, 0, 0], 0] # initialize an individual
         for ind in pool:
             if ind[2] > best_ind[2]:
                 best_ind = ind
         best_fit = [best_ind[2]]
         for generation in range(0, individuals * generations):
+            print '\riter: ' + str(generation) + '/' + str(individuals * generations),
+
             # find 2 random individuals
             rand_ind1 = random.randint(0, individuals - 1)
             rand_ind2 = random.randint(0, individuals - 1)
@@ -226,7 +256,6 @@ class GA:
                 rand_ind2 = random.randint(0, individuals - 1)
             # compare fitnesses
             ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
-            print '\riter: ' + str(generation) + '/' + str(individuals * generations) + ' ' + str(fit),
 
             # check who is winner and overwrite their stats
             if loser == 1:
@@ -254,8 +283,8 @@ class GA:
 
         return [best_ind[1], sensor_log]
 
-    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=None, light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
+    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
+                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
@@ -279,7 +308,7 @@ class GA:
         print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=5, crossover_rate=0.6, mutation_rate=0.3):
+    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

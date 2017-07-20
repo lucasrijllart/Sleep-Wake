@@ -170,8 +170,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 
         # smooth out formula, add bias maybe
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [self.wheel_l + 0.05 * (-self.wheel_l + random.uniform(-1, 1)) + 0.01,
-                                      self.wheel_r + 0.05 * (-self.wheel_r + random.uniform(-1, 1)) + 0.01]
+        self.wheel_l, self.wheel_r = [self.wheel_l + 0.05 * (-self.wheel_l + random.uniform(-1, 1)) + 0.02,
+                                      self.wheel_r + 0.05 * (-self.wheel_r + random.uniform(-1, 1)) + 0.02]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
@@ -197,7 +197,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
-        self.dt = 80
+        self.dt = 20
         self.wheel_l, self.wheel_r = 0, 0  # velocity for left and right wheels
         self.radius = 25  # radius of vehicle size
         self.pos = [start_pos]  # xy position of vehicle

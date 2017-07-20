@@ -34,6 +34,8 @@ def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, ru
     data = []
     sim = Simulator()
     for run in range(0, runs):
+        # update angle for each vehicle
+        vehicle_angle = random.randint(0, 360)
         v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed)
         vehicle_data_in_t = []
         for t in range(0, iterations):
@@ -154,7 +156,7 @@ class Cycle:
 
     def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename):
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
+        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=True)
 
         # creation of network
         start_time = time.time()
@@ -172,7 +174,7 @@ class Cycle:
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
         if train_network is not None:
-            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, train_network)
+            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, filename=train_network)
 
         # Create vehicle in simulation
         self.sim = Simulator()
@@ -191,8 +193,8 @@ class Cycle:
         ga = GA()
         self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
                                                   veh_angle=self.vehicle.angle, look_ahead=look_ahead,
-                                                  individuals=individuals, generations=generations, crossover_rate=0.4,
-                                                  mutation_rate=0.6)
+                                                  individuals=individuals, generations=generations, crossover_rate=0.6,
+                                                  mutation_rate=0.3)
         print 'Got best brain: ' + str(self.brain)
 
     def wake_testing(self, iterations):
@@ -201,7 +203,7 @@ class Cycle:
         new_vehicle = BrainVehicle(self.vehicle.pos[-1], self.vehicle.angle)
         new_vehicle.set_values(self.brain)
         new_vehicle.previous_pos = self.vehicle.pos
-        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=False, vehicle=new_vehicle)
+        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
 
         '''
         # get sensory information of vehicle and compare with predicted
