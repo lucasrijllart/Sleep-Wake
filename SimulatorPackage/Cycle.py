@@ -4,9 +4,8 @@ from Simulator import Simulator
 from Narx import Narx
 import Narx as narx
 import matplotlib.pyplot as plt
-from decimal import Decimal
 from GA import GA
-from Sprites import BrainVehicle, Light
+from Sprites import BrainVehicle
 
 
 def pre_process(raw_data):
@@ -75,21 +74,21 @@ class Cycle:
         print 'Lookahead: ' + str(look_ahead)
         # Create random brain and give it to vehicle
         if brain is not None:
-            random_brain = brain
+            brain = brain
         else:
-            random_brain = [random.uniform(-8, 8) for x in range(0, 6)]
-        print random_brain
+            brain = [random.uniform(-8, 8) for x in range(0, 6)]
+        print brain
         vehicle = BrainVehicle(start_pos=[300, 300], start_angle=200)
-        vehicle.set_values(random_brain)
+        vehicle.set_values(brain)
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=random_brain)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
                 [vehicle.motor_left[x], vehicle.motor_right[x], vehicle.sensor_left[x], vehicle.sensor_right[x]])
         sensor_motor = np.transpose(np.array(sensor_motor))
-        print sensor_motor.shape
+        # print sensor_motor.shape
 
         data = np.array(sensor_motor[:, :predict_after])  # data up until the initial run time
         sensor_log = np.array([[], []])
@@ -109,30 +108,30 @@ class Cycle:
 
             # 3. feed it to the brain to get motor information
             wheel_l, wheel_r = [
-                (prediction[0] * random_brain[0]) + (prediction[1] * random_brain[3]) + random_brain[4] / 80,
-                (prediction[1] * random_brain[2]) + (prediction[0] * random_brain[1]) + random_brain[5] / 80]
+                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
+                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
             wheel_log.append([wheel_l[0], wheel_r[0]])
             # 4. add this set of data to the input of the prediction
             next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
             # loop back to 1 until reached timestep
 
-        print wheel_log
+        # print wheel_log
         wheel_log = np.transpose(np.array(wheel_log))
 
-        print sensor_motor[2][:predict_after].shape
-        print sensor_log[0].shape
+        # print sensor_motor[2][:predict_after].shape
+        # print sensor_log[0].shape
 
         sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
-        print sensor_left.shape
+        # print sensor_left.shape
 
         sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
-        print sensor_right.shape
+        # print sensor_right.shape
 
         motor_left = np.concatenate((sensor_motor[0][:predict_after], wheel_log[0]))
-        print motor_left.shape
+        # print motor_left.shape
 
         motor_right = np.concatenate((sensor_motor[1][:predict_after], wheel_log[1]))
-        print motor_right.shape
+        # print motor_right.shape
 
         # get sensory information of vehicle and compare with predicted
         plt.figure(1)
@@ -159,7 +158,7 @@ class Cycle:
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
 
         # creation of network
-        print 'Starting training'
+        print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()))
         start_time = time.time()
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
