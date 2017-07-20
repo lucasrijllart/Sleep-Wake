@@ -82,7 +82,7 @@ class Cycle:
         print 'Error graph\nLookahead: ' + str(look_ahead)
         # Create random brain and give it to vehicle
         if brain is not None:
-            brain = brain
+            brain = [float(item) for item in brain]
         else:
             brain = [random.uniform(-8, 8) for _ in range(0, 6)]
         print brain
