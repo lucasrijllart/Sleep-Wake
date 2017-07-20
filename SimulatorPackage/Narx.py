@@ -1,7 +1,9 @@
 import pyrenn as pr
 
+
 def load_net(filename='narxNet'):
     return pr.loadNN(filename)
+
 
 class Narx:
 

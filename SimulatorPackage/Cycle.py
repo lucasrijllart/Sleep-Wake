@@ -21,21 +21,21 @@ def pre_process(raw_data):
     return [np.transpose(np.array(new_inputs)), np.transpose(np.array(new_targets))]
 
 
-def collect_random_data(vehicle_pos=None, vehicle_angle=None, light_pos=None, runs=10, iterations=1000, graphics=False,
+def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000, graphics=False,
                         gamma=0.2, seed=None):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
     if vehicle_pos is None:
-        vehicle_pos = [300, 300]
-    if vehicle_angle is None:
-        vehicle_angle = random.randint(0, 360)
+        vehicle_pos = [300, 300]  # [random.randint(25, 1215), random.randint(25, 695)]
+    if vehicle_angle_rand is False:
+        vehicle_angle = 200
     if light_pos is None:
         light_pos = [1100, 600]
     # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
     data = []
     sim = Simulator()
     for run in range(0, runs):
-        # update angle for each vehicle
-        vehicle_angle = random.randint(0, 360)
+        if vehicle_angle_rand:  # update angle for each vehicle
+            vehicle_angle = random.randint(0, 360)
         v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed)
         vehicle_data_in_t = []
         for t in range(0, iterations):
@@ -57,7 +57,7 @@ class Cycle:
             self.net.set_net(saved_net)
 
         self.vehicle = None
-        self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain, 6 weights
+        self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain assigned after GA, 6 weights
         self.vehicle_first_move = None
         self.sensors = None
 
@@ -156,9 +156,10 @@ class Cycle:
 
     def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename):
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=True)
+        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
 
         # creation of network
+        print 'Starting training'
         start_time = time.time()
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
@@ -174,7 +175,7 @@ class Cycle:
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
         if train_network is not None:
-            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, filename=train_network)
+            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, train_network)
 
         # Create vehicle in simulation
         self.sim = Simulator()
