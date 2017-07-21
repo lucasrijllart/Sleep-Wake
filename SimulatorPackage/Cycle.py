@@ -87,7 +87,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
@@ -99,42 +99,76 @@ class Cycle:
         sensor_log = np.array([[], []])
         wheel_log = []
 
-        next_input = np.array(data[:, -1])
-        next_input = np.array([[x] for x in next_input])
-
-        # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
-        # 1. predict next sensory output
-        prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-        # 2. log predicted sensory information to list (used for fitness)
-        sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-        # 3. feed it to the brain to get motor information
-        wheel_l, wheel_r = [
-            (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
-            (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
-        wheel_log.append([wheel_l[0], wheel_r[0]])
-
-        # 4. add this set of data to the input of the prediction
-        next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
-
-        for it in range(1, look_ahead):  # loop through the time steps
+        # check if vehicle has a brain, if not just pass it the data
+        if brain is not None:
+            next_input = np.array(data[:, -1])
+            next_input = np.array([[x] for x in next_input])
+            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
             # 1. predict next sensory output
-            prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+            # 3. feed it to the brain to get motor information
+            wheel_l, wheel_r = [
+                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
+                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+            wheel_log.append([wheel_l[0], wheel_r[0]])
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
 
+            for it in range(1, look_ahead):  # loop through the time steps
+                # 1. predict next sensory output
+                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+                # 2. log predicted sensory information to list (used for fitness)
+                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+                # 3. feed it to the brain to get motor information
+                wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
+                                    (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+                wheel_log.append([wheel_l[0], wheel_r[0]])
+                # 4. concatenate previous step to the full data
+                data = np.concatenate((data, next_input), axis=1)
+                # 5. set the predicted data to the next input of the prediction
+                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+                # loop back to 1 until reached timestep
+
+        else:  # vehicle does not have a brain, just random movement
+            next_input = np.array(data[:, -1])
+            next_input = np.array([[x] for x in next_input])
+            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
+            print next_input
+            print sensor_motor[:, predict_after]
+            print sensor_motor[:, predict_after-1]
+            print prediction
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
-            # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
-                                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
-            wheel_log.append([wheel_l[0], wheel_r[0]])
+            # 3. get motor information
+            wheel_l, wheel_r = [sensor_motor[0, predict_after], sensor_motor[1, predict_after]]
+            wheel_log.append([wheel_l, wheel_r])
 
-            # 4. concatenate previous step to the full data
-            data = np.concatenate((data, next_input), axis=1)
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
 
-            # 5. set the predicted data to the next input of the prediction
-            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
-            # loop back to 1 until reached timestep
+            for it in range(1, look_ahead):  # loop through the time steps
+                # 1. predict next sensory output
+                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
+
+                # 2. log predicted sensory information to list (used for fitness)
+                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+                # 3. feed it to the brain to get motor information
+                wheel_l, wheel_r = [sensor_motor[0, it+predict_after], sensor_motor[1, it+predict_after]]
+                wheel_log.append([wheel_l, wheel_r])
+
+                # 4. concatenate previous step to the full data
+                data = np.concatenate((data, next_input), axis=1)
+
+                # 5. set the predicted data to the next input of the prediction
+                next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
+                # loop back to 1 until reached timestep
+
 
         # print wheel_log
         wheel_log = np.transpose(np.array(wheel_log))
