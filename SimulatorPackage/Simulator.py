@@ -132,7 +132,7 @@ class Simulator:
         pygame.display.quit()
 
     def quick_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                         light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=None):
+                         light_pos=[1100, 600], gamma=0.05, use_seed=None, brain=None):
         """ Runs a simulation then closes then window """
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)
@@ -145,7 +145,7 @@ class Simulator:
         return vehicle
 
     def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                         light_pos=[1100, 600], gamma=0.2, use_seed=None, brain=None):
+                         light_pos=[1100, 600], gamma=0.05, use_seed=None, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)

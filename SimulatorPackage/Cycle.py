@@ -21,7 +21,7 @@ def pre_process(raw_data):
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000, graphics=False,
-                        gamma=0.2, seed=None):
+                        gamma=0.05, seed=None):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
     random_brains = 0
     if vehicle_pos is None:
@@ -39,7 +39,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
         if vehicle_angle_rand:  # update angle for each vehicle
             vehicle_angle = random.randint(0, 360)
         brain = None
-        if random.random() < 0.3:  # 30% chance of vehicle being a random brain
+        if random.random() < 0.0:  # 30% chance of vehicle being a random brain
             brain = [random.uniform(-8, 8) for _ in range(0, 6)]
             random_brains += 1
         v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
@@ -83,11 +83,8 @@ class Cycle:
         # Create random brain and give it to vehicle
         if brain is not None:
             brain = [float(item) for item in brain]
-        else:
-            brain = [random.uniform(-8, 8) for _ in range(0, 6)]
-        print brain
-        vehicle = BrainVehicle(start_pos=[300, 300], start_angle=200)
-        vehicle.set_values(brain)
+            print brain
+
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
         vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain)
@@ -177,9 +174,10 @@ class Cycle:
         plt.plot(i, vehicle.motor_right, 'b', i, motor_right, 'r')
         plt.show()
 
-    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename):
+    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename, gamma):
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time, graphics=False)
+        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time,
+                                                        graphics=True, gamma=gamma)
 
         # creation of network
         print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()))
@@ -194,15 +192,16 @@ class Cycle:
         print 'Finished training network "%s" in %ds' % (filename, time.time()-start_time)
 
     def wake_learning(self, random_movements, train_network=None, learning_runs=4, learning_time=400,
-                      input_delay=5, output_delay=5, max_epochs=50):
+                      input_delay=5, output_delay=5, max_epochs=50, gamma=0.05):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
         if train_network is not None:
-            self.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs, train_network)
+            self.train_network(learning_runs, learning_time, input_delay, output_delay,
+                               max_epochs, train_network, gamma)
 
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=False, veh_pos=[300, 300])
+        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
