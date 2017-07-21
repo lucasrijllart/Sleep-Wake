@@ -1,5 +1,5 @@
 import numpy as np
-import random, time
+import random, time, datetime
 from Simulator import Simulator
 from Narx import Narx
 import Narx as narx
@@ -87,7 +87,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
@@ -174,13 +174,16 @@ class Cycle:
         plt.plot(i, vehicle.motor_right, 'b', i, motor_right, 'r')
         plt.show()
 
-    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, filename, gamma):
+    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, gamma):
+        filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, input_delay, max_epochs)
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time,
-                                                        graphics=True, gamma=gamma)
+                                                        graphics=False, gamma=gamma)
 
         # creation of network
-        print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()))
+        print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
+        print 'learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
+                                                                               input_delay, output_delay, max_epochs)
         start_time = time.time()
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
@@ -189,19 +192,19 @@ class Cycle:
 
         # save network to file
         self.net.save_to_file(filename=filename)
-        print 'Finished training network "%s" in %ds' % (filename, time.time()-start_time)
+        print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time()-start_time))
 
-    def wake_learning(self, random_movements, train_network=None, learning_runs=4, learning_time=400,
+    def wake_learning(self, random_movements, train_network=False, learning_runs=4, learning_time=400,
                       input_delay=5, output_delay=5, max_epochs=50, gamma=0.05):
         """ Start with random commands to train the model then compares actual with predicted sensor readings"""
         # Train network or use network alreay saved
-        if train_network is not None:
+        if train_network:
             self.train_network(learning_runs, learning_time, input_delay, output_delay,
-                               max_epochs, train_network, gamma)
+                               max_epochs, gamma)
 
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
+        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=False, veh_pos=[300, 300])
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
