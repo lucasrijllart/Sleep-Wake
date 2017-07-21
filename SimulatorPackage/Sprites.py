@@ -2,7 +2,9 @@ import pygame
 import math
 import random
 
-dt=20
+dt = 2
+
+
 class ControllableVehicle(pygame.sprite.Sprite):
     def __init__(self, start_pos, start_angle):
         # pygame init
@@ -76,8 +78,8 @@ class ControllableVehicle(pygame.sprite.Sprite):
         # calculate square distance to light
         distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
         distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
-        sensor_l = 10 / (distance_l + 1)
-        sensor_r = 10 / (distance_r + 1)
+        sensor_l = 10 / (distance_l + 1) ** 0.5
+        sensor_r = 10 / (distance_r + 1) ** 0.5
         # print('dl:', distance_l, 'dr:', distance_r)
 
         # calculate sensor intensity
@@ -158,8 +160,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         # calculate square distance to light
         distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
         distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
-        sensor_l = 10 / (distance_l + 1)
-        sensor_r = 10 / (distance_r + 1)
+        sensor_l = 10 / (distance_l + 1) ** 0.5
+        sensor_r = 10 / (distance_r + 1) ** 0.5
         # print('dl:', distance_l, 'dr:', distance_r)
 
         # calculate sensor intensity
@@ -170,8 +172,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 
         # smooth out formula, add bias maybe
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(0, 1)) + 0.02,
-                                      self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(0, 1)) + 0.02]
+        self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(0, 2)) + 0.01,
+                                      self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(0, 2)) + 0.01]
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
         # print(self.motors[-1])
@@ -253,8 +255,8 @@ class BrainVehicle(pygame.sprite.Sprite):
         # calculate square distance to light
         distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
         distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
-        sensor_l = 10 / (distance_l + 1)
-        sensor_r = 10 / (distance_r + 1)
+        sensor_l = 10 / (distance_l + 1) ** 0.5
+        sensor_r = 10 / (distance_r + 1) ** 0.5
         # print('dl:', distance_l, 'dr:', distance_r)
 
         # calculate sensor intensity
