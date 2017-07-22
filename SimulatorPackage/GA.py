@@ -1,20 +1,33 @@
 from Simulator import Simulator
 from Sprites import BrainVehicle, ControllableVehicle, Light
 import numpy as np
-from Narx import Narx
 import random
 import math
 import matplotlib.pyplot as plt
 
 
+def make_random_brain():
+    return [random.uniform(-GA.genome_scale, GA.genome_scale) for _ in range(0, GA.genome_length)]
+
+
+def _init_pool(individuals):
+    pool = []
+    for i in range(0, individuals):
+        ind = make_random_brain()
+        pool.append(ind)
+    return pool
+
+
 class GA:
+
+    genome_scale = 10
+    genome_length = 6
 
     def __init__(self, graphics=True):
         self.graphics = graphics
 
         self.individual_reached_light = [False]
         self.sim = None
-        self.genome_scale = 8
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
@@ -27,13 +40,6 @@ class GA:
         self.offline = None
 
         self.sim = Simulator()
-
-    def _init_pool(self, individuals):
-        pool = []
-        for i in range(0, individuals):
-            ind = [random.uniform(-self.genome_scale, self.genome_scale) for x in range(0, 6)]
-            pool.append(ind)
-        return pool
 
     def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
         for i in range(0, len(ind)):
@@ -101,8 +107,8 @@ class GA:
 
             # 3. feed it to the brain to get motor information
             wheel_l, wheel_r = [
-                (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
-                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
+                (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
             wheel_log.append([wheel_l[0], wheel_r[0]])
 
             # 4. add this set of data to the input of the prediction
@@ -116,8 +122,8 @@ class GA:
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
-                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
+                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
                 wheel_log.append([wheel_l[0], wheel_r[0]])
 
                 # 4. concatenate previous step to the full data
@@ -132,9 +138,10 @@ class GA:
 
             sim = Simulator()
             vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+            wheel_log1 = np.copy(wheel_log)
             vehicle.set_wheels(wheel_log)
             sim.light = Light([1100, 600])
-            #sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+            sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
 
             # wheel_log = np.transpose(np.array(wheel_log))
             # fitness_after = 0
@@ -151,8 +158,7 @@ class GA:
 
             Sl = sensor_log[0]
             Sr = sensor_log[1]
-            wheel_log = np.array(wheel_log)
-            wheel_log = np.transpose(wheel_log)
+            wheel_log = np.transpose(wheel_log1)
 
             # sum = 0
             # for idx in range(1, len(Sl)):
@@ -174,7 +180,7 @@ class GA:
                 diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
                 sA = (sensor_log[0][i] + sensor_log[1][i])
                 smax = max(sensor_log[0][i] ,sensor_log[1][i])
-                fitness += vA * (5 - diff) * (4 - smax) + sA
+                fitness += vA * (5 - diff) * (10 + smax) + sA
             fitness /= len(Sl)
 
             return fitness
@@ -259,7 +265,7 @@ class GA:
             return sensor_log
 
     def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
-        pool = self._get_all_fitnesses(self._init_pool(individuals))
+        pool = self._get_all_fitnesses(_init_pool(individuals))
         best_ind = [0, [0, 0, 0, 0, 0, 0], 0] # initialize an individual
         for ind in pool:
             if ind[2] > best_ind[2]:

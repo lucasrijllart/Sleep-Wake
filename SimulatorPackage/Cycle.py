@@ -4,7 +4,8 @@ from Simulator import Simulator
 from Narx import Narx
 import Narx as narx
 import matplotlib.pyplot as plt
-from GA import GA
+import GA
+from GA import GA as GAClass
 from Sprites import BrainVehicle
 
 
@@ -20,10 +21,10 @@ def pre_process(raw_data):
     return [np.transpose(np.array(new_inputs)), np.transpose(np.array(new_targets))]
 
 
-def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000, graphics=False,
-                        gamma=0.05, seed=None):
+def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000,
+                        graphics=False, gamma=0.3, seed=None):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
-    random_brains = 0
+    random_brains = 0  # maybe pass this into the method at some point
     if vehicle_pos is None:
         vehicle_pos = [300, 300]  # [random.randint(25, 1215), random.randint(25, 695)]
     if vehicle_angle_rand is False:
@@ -32,7 +33,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
         vehicle_angle = random.randint(0, 360)
     if light_pos is None:
         light_pos = [1100, 600]
-    # add 1 because the simulation returns iterations-1 as the first time step is the starting position (not recorded)
+
     data = []
     sim = Simulator()
     for run in range(0, runs):
@@ -40,9 +41,10 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             vehicle_angle = random.randint(0, 360)
         brain = None
         if random.random() < 0.0:  # 30% chance of vehicle being a random brain
-            brain = [random.uniform(-8, 8) for _ in range(0, 6)]
+            brain = GA.make_random_brain()
             random_brains += 1
-        v = sim.quick_simulation(iterations + 1, True, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
+        # add 1 because the simulation returns iterations-1 as the first timestep is the starting pos (not recorded)
+        v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -110,8 +112,8 @@ class Cycle:
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
             # 3. feed it to the brain to get motor information
             wheel_l, wheel_r = [
-                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
-                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant,
+                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / BrainVehicle.bias_constant]
             wheel_log.append([wheel_l[0], wheel_r[0]])
             # 4. add this set of data to the input of the prediction
             next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
@@ -122,8 +124,8 @@ class Cycle:
                 # 2. log predicted sensory information to list (used for fitness)
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / 80,
-                                    (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / 80]
+                wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant,
+                                    (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / BrainVehicle.bias_constant]
                 wheel_log.append([wheel_l[0], wheel_r[0]])
                 # 4. concatenate previous step to the full data
                 data = np.concatenate((data, next_input), axis=1)
@@ -230,7 +232,7 @@ class Cycle:
         """ Create a vehicle and run for some timesteps """
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=False, veh_pos=[300, 300])
+        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
@@ -242,7 +244,7 @@ class Cycle:
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
-        ga = GA()
+        ga = GAClass()
         self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
                                                   veh_angle=self.vehicle.angle, look_ahead=look_ahead,
                                                   individuals=individuals, generations=generations, crossover_rate=0.6,
