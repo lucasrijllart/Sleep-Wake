@@ -240,7 +240,7 @@ class Cycle:
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
-    def sleep(self,look_ahead=100, individuals=25, generations=10):
+    def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
         ga = GA()
         self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
