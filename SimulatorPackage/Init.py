@@ -1,25 +1,37 @@
 from Cycle import Cycle
 
-learning_runs = 5
-learning_time = 300
-input_delay = 2
-output_delay = 2
-max_epochs = 5
-train_network = True
+learning_runs = 400
+learning_time = 200
+input_delay = 20
+output_delay = 20
+max_epochs = 100
 
-intial_random_movement = 50
+initial_random_movement = 50
+
 look_ahead = 100
 
 
-cycle = Cycle(net_filename='r5t300d20-20e20')
+train_network = False
+wake_learn = False
+error_graph = True
+sleep = False
+wake_test = False
 
-cycle.wake_learning(intial_random_movement, train_network=train_network, learning_runs=learning_runs,
-                    learning_time=learning_time, input_delay=input_delay, output_delay=output_delay,
-                    max_epochs=max_epochs)
+cycle = Cycle(net_filename='narx/r400t200d20e100')
 
-brain = [-2, 8, -2, 8, 5, 5]
-cycle.show_error_graph(testing_time=100, predict_after=40, brain=brain)
+if train_network:
+    cycle.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs)
 
-# cycle.sleep(look_ahead=look_ahead, individuals=30, generations=10)
+if wake_learn:
+    cycle.wake_learning(initial_random_movement)
 
-# cycle.wake_testing(iterations=200)
+if error_graph:
+    brain = [-7, 8,
+             6, 4, 4, 4]
+    cycle.show_error_graph(testing_time=200, predict_after=20, brain=brain)
+
+if sleep:
+    cycle.sleep(look_ahead=look_ahead, individuals=30, generations=10)
+
+if wake_test:
+    cycle.wake_testing(iterations=200)

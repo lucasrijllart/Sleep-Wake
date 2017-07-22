@@ -42,7 +42,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
         if random.random() < 0.0:  # 30% chance of vehicle being a random brain
             brain = [random.uniform(-8, 8) for _ in range(0, 6)]
             random_brains += 1
-        v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
+        v = sim.quick_simulation(iterations + 1, True, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -137,10 +137,6 @@ class Cycle:
             # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
             # 1. predict next sensory output
             prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-            print next_input
-            print sensor_motor[:, predict_after]
-            print sensor_motor[:, predict_after-1]
-            print prediction
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
@@ -199,16 +195,18 @@ class Cycle:
         plt.title('Right sensor values b=real, r=pred')
         plt.plot(i, vehicle.sensor_right, 'b', i, sensor_right, 'r')
 
+        msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in range(0, len(sensor_left))]
         plt.subplot(223)
-        plt.title('Left motor values b=real, r=pred')
-        plt.plot(i, vehicle.motor_left, 'b', i, motor_left, 'r')
+        plt.title('MSE of left sensor')
+        plt.plot(range(0, len(msel)), msel)
 
+        mser = [((sensor_right[i]-vehicle.sensor_right[i])**2) / len(sensor_right) for i in range(0, len(sensor_right))]
         plt.subplot(224)
-        plt.title('Right motor values b=real, r=pred')
-        plt.plot(i, vehicle.motor_right, 'b', i, motor_right, 'r')
+        plt.title('MSE of left sensor')
+        plt.plot(range(0, len(mser)), mser)
         plt.show()
 
-    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, gamma):
+    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, gamma=0.3):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, input_delay, max_epochs)
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time,
@@ -228,14 +226,8 @@ class Cycle:
         self.net.save_to_file(filename=filename)
         print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time()-start_time))
 
-    def wake_learning(self, random_movements, train_network=False, learning_runs=4, learning_time=400,
-                      input_delay=5, output_delay=5, max_epochs=50, gamma=0.05):
-        """ Start with random commands to train the model then compares actual with predicted sensor readings"""
-        # Train network or use network alreay saved
-        if train_network:
-            self.train_network(learning_runs, learning_time, input_delay, output_delay,
-                               max_epochs, gamma)
-
+    def wake_learning(self, random_movements):
+        """ Create a vehicle and run for some timesteps """
         # Create vehicle in simulation
         self.sim = Simulator()
         self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=False, veh_pos=[300, 300])
