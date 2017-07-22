@@ -4,8 +4,8 @@ from Simulator import Simulator
 from Narx import Narx
 import Narx as narx
 import matplotlib.pyplot as plt
-import GA
-from GA import GA as GAClass
+import Genetic
+from Genetic import GA as GA
 from Sprites import BrainVehicle
 
 
@@ -41,7 +41,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             vehicle_angle = random.randint(0, 360)
         brain = None
         if random.random() < 0.0:  # 30% chance of vehicle being a random brain
-            brain = GA.make_random_brain()
+            brain = Genetic.make_random_brain()
             random_brains += 1
         # add 1 because the simulation returns iterations-1 as the first timestep is the starting pos (not recorded)
         v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
@@ -244,7 +244,7 @@ class Cycle:
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
-        ga = GAClass()
+        ga = GA()
         self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
                                                   veh_angle=self.vehicle.angle, look_ahead=look_ahead,
                                                   individuals=individuals, generations=generations, crossover_rate=0.6,
