@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import Genetic
 from Genetic import GA as GA
 from Sprites import BrainVehicle
+import os.path
 
 
 def pre_process(raw_data):
@@ -89,7 +90,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
@@ -210,6 +211,14 @@ class Cycle:
 
     def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, gamma=0.3):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, input_delay, max_epochs)
+        # check if filename is already taken
+        count = 1
+        new_filename = filename
+        while os.path.exists(new_filename):
+            new_filename = filename + '_v' + str(count)
+            count += 1
+        filename = new_filename
+
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time,
                                                         graphics=False, gamma=gamma)
