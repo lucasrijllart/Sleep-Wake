@@ -104,9 +104,6 @@ class Simulator:
         if show_sen_mot_graph:
             show_graph(vehicle)
 
-        if graphics:
-            print 'PyGame iterations: ' + str(self.number_of_iterations)
-
         return vehicle
 
     def init_simulation_random(self, iteration, graphics, veh_rand_pos, veh_rand_angle, light_rand_pos):

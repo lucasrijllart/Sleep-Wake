@@ -178,9 +178,9 @@ class GA:
             for i in range(0, len(Sl)):
                 vA = (wheel_log[0][i] + wheel_log[1][i])/2
                 diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
-                sA = (sensor_log[0][i] + sensor_log[1][i])
+                sA = (sensor_log[0][i] + sensor_log[1][i])/2
                 smax = max(sensor_log[0][i] ,sensor_log[1][i])
-                fitness += vA/2 * (5 - diff) * (10 + smax) + sA
+                fitness += vA * (3 - diff) * (smax**2) + sA
             fitness /= len(Sl)
 
             return fitness
@@ -292,6 +292,8 @@ class GA:
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
         plt.plot(range(0, len(best_fit)), best_fit)
+        plt.title('Graph of best fitness by generation in GA\n individuals:%d generations:%d' %
+                  (individuals, generations))
         plt.show()
 
         return [best_ind[1], sensor_log, predicted_wheels]

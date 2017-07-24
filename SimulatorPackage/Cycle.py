@@ -59,6 +59,7 @@ class Cycle:
     def __init__(self, net_filename=None):
 
         self.net = None  # NARX network
+        self.net_filename = net_filename
         if net_filename is not None:
             start_time = time.time()
             saved_net = narx.load_net(net_filename)
@@ -78,15 +79,14 @@ class Cycle:
     def show_error_graph(self, testing_time=400, predict_after=100, brain=None):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
-            print 'Show error graph exception: No network found'
+            print 'show_error_graph() Exception: No network found'
             return
         # Lookahead is testing time - predict after
         look_ahead = testing_time - predict_after
-        print 'Error graph\nLookahead: ' + str(look_ahead)
+
         # Create random brain and give it to vehicle
         if brain is not None:
             brain = [float(item) for item in brain]
-            print brain
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
@@ -167,28 +167,18 @@ class Cycle:
                 # 5. set the predicted data to the next input of the prediction
                 next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
                 # loop back to 1 until reached timestep
+            brain = 'random'
 
-
-        # print wheel_log
-        wheel_log = np.transpose(np.array(wheel_log))
-
-        # print sensor_motor[2][:predict_after].shape
-        # print sensor_log[0].shape
-
+        # add previous and predicted values for sensors to display in graph
         sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
-        # print sensor_left.shape
-
         sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
-        # print sensor_right.shape
-
-        motor_left = np.concatenate((sensor_motor[0][:predict_after], wheel_log[0]))
-        # print motor_left.shape
-
-        motor_right = np.concatenate((sensor_motor[1][:predict_after], wheel_log[1]))
-        # print motor_right.shape
 
         # get sensory information of vehicle and compare with predicted
         plt.figure(1)
+        title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
+                ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename, testing_time,
+                                                                                       predict_after, brain)
+        plt.suptitle(title)
         i = np.array(range(0, len(vehicle.sensor_left)))
         plt.subplot(221)
         plt.title('Left sensor values b=real, r=pred')
@@ -238,7 +228,7 @@ class Cycle:
         print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time()-start_time))
 
     def wake_learning(self, random_movements):
-        """ Create a vehicle and run for some timesteps """
+        """ Create a vehicle and run for some time-steps """
         # Create vehicle in simulation
         self.sim = Simulator()
         self.random_vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
@@ -261,7 +251,6 @@ class Cycle:
         self.brain = ga_result[0]
         predicted_sensors = ga_result[1]
         predicted_wheels = ga_result[2]
-        print 'Got best brain: ' + str(self.brain)
 
         # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
         ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
@@ -275,25 +264,28 @@ class Cycle:
         v_iter = np.array(range(0, len(ga_prediction_vehicle.sensor_left)))  # GA predicted vehicle iterations
 
         plt.figure(1)
-        plt.suptitle('HELLO')
+        plt.suptitle('Graph of predicted vs actual sensor values and Mean Squared Error. Lookahead:' +
+                     str(look_ahead))
         plt.subplot(221)
-        plt.title('Left sensor values b=real, r=pred')
-        plt.plot(v_iter, ga_prediction_vehicle.sensor_left, 'b', v_iter, predicted_sensors[0], 'r')
+        plt.title('Left sensor values')
+        plt.plot(v_iter, ga_prediction_vehicle.sensor_left, 'b', v_iter, predicted_sensors[0], 'g')
 
         plt.subplot(222)
-        plt.title('Right sensor values b=real, r=pred')
-        plt.plot(v_iter, ga_prediction_vehicle.sensor_right, 'b', v_iter, predicted_sensors[1], 'r')
+        plt.title('Right sensor values')
+        plt.plot(v_iter, ga_prediction_vehicle.sensor_right, 'b', label='actual')
+        plt.plot(v_iter, predicted_sensors[1], 'g', label='predicted')
+        plt.legend()
 
         plt.subplot(223)
         msel = [((predicted_sensors[0][it] - ga_prediction_vehicle.sensor_left[it]) ** 2) / len(v_iter) for it in
                 range(0, len(v_iter))]
-        plt.title('Left motor values b=real, r=pred')
+        plt.title('Left motor values')
         plt.plot(v_iter, msel)
 
         plt.subplot(224)
         mser = [((predicted_sensors[1][it] - ga_prediction_vehicle.sensor_right[it]) ** 2) / len(v_iter) for it in
                 range(0, len(v_iter))]
-        plt.title('Right motor values b=real, r=pred')
+        plt.title('Right motor values')
         plt.plot(v_iter,  mser)
         plt.show()
 
@@ -307,14 +299,17 @@ class Cycle:
 
         actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
 
-        # get sensory information of vehicle and compare with predicted
+        # get positional information of vehicle and compare with predicted
         plt.figure(1)
-        i = np.array(range(0, len(self.predicted_pos)-1))
-        plt.subplot(221)
-        plt.title('Left sensor values b=real, r=pred')
-        plt.plot(i, i)
+        actual_move = np.transpose(actual_vehicle.pos)
+        pred_move = np.transpose(self.predicted_pos)
+        i = np.array(range(0, len(actual_vehicle.pos)))
+        plt.title('Graph of predicted vs actual movement in space')
+        plt.scatter(actual_move[0], actual_move[1], s=7, c='r', label='actual')
+        plt.scatter(pred_move[0], pred_move[1], s=10, c='g', label='predicted')
+        plt.plot(actual_move[0], actual_move[1], 'r')
+        plt.plot(pred_move[0], pred_move[1], 'g')
 
-        # plt.subplot(222)
-        # plt.title('Right sensor values b=real, r=pred')
-        # plt.plot(i, actual_vehicle.sensor_right, 'b', i, self.sensors[1][:-1], 'r')
+        plt.legend()
+
         plt.show()
