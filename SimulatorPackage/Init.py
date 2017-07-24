@@ -1,14 +1,14 @@
 from Cycle import Cycle
 
 # Train Network
-learning_runs = 100
-learning_time = 200
+learning_runs = 300
+learning_time = 100
 input_delay = 20
 output_delay = 20
-max_epochs = 50
+max_epochs = 10
 
 # Wake learning
-initial_random_movement = 50
+initial_random_movement = 20
 
 # Error graph
 testing_time = 100
@@ -17,19 +17,17 @@ predict_after = 40
 # Sleep
 look_ahead = 20
 individuals = 30
-generations = 10
+generations = 30
 
 # Wake testing
-wake_test_iter = 200
+wake_test_iter = 100
 
 
 # Booleans for running
 train_network = False
-error_graph =   True
+error_graph = True
 
-wake_learn =    True
-sleep =         True
-wake_test =     True
+run_cycles = False
 
 
 # Functions
@@ -43,11 +41,9 @@ if error_graph:
     cycle.show_error_graph(testing_time=testing_time, predict_after=predict_after, brain=None)
 
 
-if wake_learn:
+if run_cycles:
     cycle.wake_learning(initial_random_movement)
 
-if sleep:
     cycle.sleep(look_ahead, individuals, generations)
 
-if wake_test:
     cycle.wake_testing(wake_test_iter)
