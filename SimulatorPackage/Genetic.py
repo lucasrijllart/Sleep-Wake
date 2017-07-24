@@ -141,7 +141,7 @@ class GA:
             wheel_log1 = np.copy(wheel_log)
             vehicle.set_wheels(wheel_log)
             sim.light = Light([1100, 600])
-            sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
+            sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
 
             # wheel_log = np.transpose(np.array(wheel_log))
             # fitness_after = 0
@@ -180,7 +180,7 @@ class GA:
                 diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
                 sA = (sensor_log[0][i] + sensor_log[1][i])
                 smax = max(sensor_log[0][i] ,sensor_log[1][i])
-                fitness += vA * (5 - diff) * (10 + smax) + sA
+                fitness += vA/2 * (5 - diff) * (10 + smax) + sA
             fitness /= len(Sl)
 
             return fitness
@@ -200,60 +200,48 @@ class GA:
 
     def _run_winner(self, graphics, ind):
         if self.offline:
-            print 'Running: ' + str(ind)
             sensor_log = np.array([[], []])
             wheel_log = []
+            data = self.data
 
-            next_input = np.array(self.data[:, -1])
-            data = self.data # check if that is only the first 100 data
+            next_input = np.array(data[:, -1])
             next_input = np.array([[x] for x in next_input])
-            for it in range(0, self.look_ahead):  # loop through the time steps
+
+            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. feed it to the brain to get motor information
+            wheel_l, wheel_r = [
+                (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
+            wheel_log.append([wheel_l[0], wheel_r[0]])
+
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+
+            for it in range(1, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
                 prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
-                # concatenate to the full data
-                data = np.concatenate((data, next_input), axis=1)
 
                 # 2. log predicted sensory information to list (used for fitness)
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / 80,
-                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / 80]
+                wheel_l, wheel_r = [
+                    (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
                 wheel_log.append([wheel_l[0], wheel_r[0]])
-                # 4. add this set of data to the input of the prediction
+
+                # 4. concatenate previous step to the full data
+                data = np.concatenate((data, next_input), axis=1)
+
+                # 5. set the predicted data to the next input of the prediction
                 next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
                 # loop back to 1 until reached timestep
-
-            wheels = np.copy(wheel_log)
-            sim = Simulator()
-            vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
-            vehicle.set_wheels(wheel_log)
-            sim.light = Light([1100, 600])
-            vehicle = sim.run_simulation(len(wheel_log), graphics=True, vehicle=vehicle)
-
-            wheels2 = np.transpose(wheels)
-            # get sensory information of vehicle and compare with predicted
-            plt.figure(1)
-            i = np.array(range(0, len(vehicle.sensor_left)))
-            plt.subplot(221)
-            plt.title('Left sensor values b=real, r=pred')
-            plt.plot(i, vehicle.sensor_left, 'b', i, sensor_log[0][:-1], 'r')
-
-            plt.subplot(222)
-            plt.title('Right sensor values b=real, r=pred')
-            plt.plot(i, vehicle.sensor_right, 'b', i, sensor_log[1][:-1], 'r')
-
-            plt.subplot(223)
-            plt.title('Left motor values b=real, r=pred')
-            plt.plot(i, vehicle.motor_left, 'b', i, wheels2[0][:-1], 'r')
-
-            plt.subplot(224)
-            plt.title('Right motor values b=real, r=pred')
-            plt.plot(i, vehicle.motor_right, 'b', i, wheels2[1][:-1], 'r')
-            plt.show()
-
-            return sensor_log
+            return [sensor_log, wheel_log]
 
         else:
             print 'Running: ' + str(ind) + str(self._get_fitness(ind))
@@ -300,13 +288,13 @@ class GA:
             else:
                 best_fit.append(best_ind[2])
 
-        print '\rFinished GA: %s iter' % (individuals * generations)
-        print 'Best fitness: ' + str(best_fit[-1]) + str(best_ind)
-        sensor_log = self._run_winner(self.graphics, best_ind[1])
+        print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (individuals * generations, best_fit[-1], best_ind[1])
+        sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
+
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.show()
 
-        return [best_ind[1], sensor_log]
+        return [best_ind[1], sensor_log, predicted_wheels]
 
     def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
                     individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):

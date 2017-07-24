@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import numpy as np
 
 # dt constant for all sprites
 dt = 2
@@ -31,6 +32,7 @@ def update_position(vehicle, time):
     vehicle.pos.append([vehicle.pos[-1][0] - dt * vc * math.sin(vehicle.bearing[time - 1]),
                         vehicle.pos[-1][1] - dt * vc * math.cos(vehicle.bearing[time - 1])])  # update position
     vehicle.bearing.append(math.fmod(vehicle.bearing[time - 1] + dt * va, 2 * math.pi))  # update bearing
+    vehicle.angle = vehicle.bearing[-1] * (180 / math.pi)
 
 
 def update_graphics(vehicle):
@@ -67,15 +69,14 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.wheel_data = []
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
-        self.previous_pos = []
-        self.brain = []
+        self.random_movement = []
 
         # weights sensor->motor (lr = left sensor to right wheel)
         self.w_ll, self.w_lr, self.w_rr, self.w_rl = 0, 0, 0, 0
         self.bias_l, self.bias_r = 0, 0
 
     def set_wheels(self, wheel_data):
-        self.wheel_data = wheel_data
+        self.wheel_data = np.copy(wheel_data).tolist()
 
     def set_values(self, ll, lr, rr, rl, bl=0, br=0):
         self.w_ll = ll
@@ -124,7 +125,6 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.wheel_l, self.wheel_r = random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05)
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
-        self.previous_pos = []
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -174,7 +174,8 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.w_ll, self.w_rl, self.w_rr, self.w_lr = 0, 0, 0, 0
         self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
-        self.previous_pos = []  # keeps track of the movement before the brain (random movements)
+        self.random_movement = []  # keeps track of the movement before the brain
+        self.predicted_movement = []  # keeps track of the predicted movement by the GA
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []

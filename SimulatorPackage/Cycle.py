@@ -6,7 +6,7 @@ import Narx as narx
 import matplotlib.pyplot as plt
 import Genetic
 from Genetic import GA as GA
-from Sprites import BrainVehicle
+from Sprites import BrainVehicle, ControllableVehicle
 import os.path
 
 
@@ -66,10 +66,10 @@ class Cycle:
             self.net.set_net(saved_net)
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time()-start_time)
 
-        self.vehicle = None
+        self.random_vehicle = None
         self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain assigned after GA, 6 weights
         self.vehicle_first_move = None
-        self.sensors = None
+        self.predicted_pos = None
 
         self.sim = None
 
@@ -225,8 +225,8 @@ class Cycle:
 
         # creation of network
         print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
-        print 'learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
-                                                                               input_delay, output_delay, max_epochs)
+        print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
+                                                                                  input_delay, output_delay, max_epochs)
         start_time = time.time()
         self.net = Narx(input_delay=input_delay, output_delay=output_delay)
 
@@ -241,43 +241,80 @@ class Cycle:
         """ Create a vehicle and run for some timesteps """
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
+        self.random_vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
         vehicle_move = []
         for t in range(0, random_movements):
-            vehicle_move.append([self.vehicle.motor_left[t], self.vehicle.motor_right[t], self.vehicle.sensor_left[t],
-                                 self.vehicle.sensor_right[t]])
+            vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t], self.random_vehicle.sensor_left[t],
+                                 self.random_vehicle.sensor_right[t]])
         vehicle_first_move = []
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
+        print self.random_vehicle.bearing[-1]
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
         ga = GA()
-        self.brain, self.sensors = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.vehicle.pos[-1],
-                                                  veh_angle=self.vehicle.angle, look_ahead=look_ahead,
-                                                  individuals=individuals, generations=generations, crossover_rate=0.6,
-                                                  mutation_rate=0.3)
+        ga_result = ga.run_offline(self.net, self.vehicle_first_move, veh_pos=self.random_vehicle.pos[-1],
+                                   veh_angle=self.random_vehicle.angle, look_ahead=look_ahead, individuals=individuals,
+                                   generations=generations, crossover_rate=0.6, mutation_rate=0.3)
+        self.brain = ga_result[0]
+        predicted_sensors = ga_result[1]
+        predicted_wheels = ga_result[2]
         print 'Got best brain: ' + str(self.brain)
+
+        # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
+        ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
+        ga_prediction_vehicle.set_wheels(predicted_wheels)
+        ga_prediction_vehicle.random_movement = self.random_vehicle.pos
+        ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels)+1, graphics=True,
+                                                        vehicle=ga_prediction_vehicle)
+        self.predicted_pos = ga_prediction_vehicle.pos
+
+        # Error graph with MSE. Get sensory information of vehicle and compare with predicted
+        v_iter = np.array(range(0, len(ga_prediction_vehicle.sensor_left)))  # GA predicted vehicle iterations
+
+        plt.figure(1)
+        plt.suptitle('HELLO')
+        plt.subplot(221)
+        plt.title('Left sensor values b=real, r=pred')
+        plt.plot(v_iter, ga_prediction_vehicle.sensor_left, 'b', v_iter, predicted_sensors[0], 'r')
+
+        plt.subplot(222)
+        plt.title('Right sensor values b=real, r=pred')
+        plt.plot(v_iter, ga_prediction_vehicle.sensor_right, 'b', v_iter, predicted_sensors[1], 'r')
+
+        plt.subplot(223)
+        msel = [((predicted_sensors[0][it] - ga_prediction_vehicle.sensor_left[it]) ** 2) / len(v_iter) for it in
+                range(0, len(v_iter))]
+        plt.title('Left motor values b=real, r=pred')
+        plt.plot(v_iter, msel)
+
+        plt.subplot(224)
+        mser = [((predicted_sensors[1][it] - ga_prediction_vehicle.sensor_right[it]) ** 2) / len(v_iter) for it in
+                range(0, len(v_iter))]
+        plt.title('Right motor values b=real, r=pred')
+        plt.plot(v_iter,  mser)
+        plt.show()
 
     def wake_testing(self, iterations):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
-        new_vehicle = BrainVehicle(self.vehicle.pos[-1], self.vehicle.angle)
+        new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
         new_vehicle.set_values(self.brain)
-        new_vehicle.previous_pos = self.vehicle.pos
+        new_vehicle.random_movement = self.random_vehicle.pos
+        new_vehicle.predicted_movement = self.predicted_pos
+
         actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
 
-        '''
         # get sensory information of vehicle and compare with predicted
         plt.figure(1)
-        i = np.array(range(0, len(actual_vehicle.sensor_left)))
+        i = np.array(range(0, len(self.predicted_pos)-1))
         plt.subplot(221)
         plt.title('Left sensor values b=real, r=pred')
-        plt.plot(i, actual_vehicle.sensor_left, 'b', i, self.sensors[0][:-1], 'r')
+        plt.plot(i, i)
 
-        plt.subplot(222)
-        plt.title('Right sensor values b=real, r=pred')
-        plt.plot(i, actual_vehicle.sensor_right, 'b', i, self.sensors[1][:-1], 'r')
+        # plt.subplot(222)
+        # plt.title('Right sensor values b=real, r=pred')
+        # plt.plot(i, actual_vehicle.sensor_right, 'b', i, self.sensors[1][:-1], 'r')
         plt.show()
-        '''

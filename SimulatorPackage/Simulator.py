@@ -4,7 +4,7 @@ import pygame
 import math
 import random
 import matplotlib.pyplot as plt
-from Sprites import BrainVehicle, RandomMotorVehicle, Light
+from Sprites import *
 
 
 def show_sensors_motors(screen, vehicle):
@@ -32,8 +32,18 @@ def show_sensors_motors(screen, vehicle):
     right_sensor = my_font.render(format(vehicle.sensor_right[-1], '.2f'), 1, (100, 100, 0))
     screen.blit(right_sensor, [int(direction_x), int(direction_y)])
 
-    [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
-    [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_pos]
+    if isinstance(vehicle, RandomMotorVehicle):  # random movement in blue
+        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+
+    if isinstance(vehicle, ControllableVehicle):  # random in blue, predicted in grey
+        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
+        [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+
+    if isinstance(vehicle, BrainVehicle):  # random in blue, predicted in grey, and actual in red
+        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
+        [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.predicted_movement]
+        [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+
 
 
 def show_graph(vehicle):
@@ -53,8 +63,8 @@ class Simulator:
 
     def __init__(self):
         pygame.init()
-        self.window_width = 1240
-        self.window_height = 720
+        self.window_width = 1800  # 1240
+        self.window_height = 1000  # 720
         self.number_of_iterations = 0
         self.light = None
 
