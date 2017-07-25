@@ -233,7 +233,7 @@ class Cycle:
         print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
                                                                                   input_delay, output_delay, max_epochs)
         start_time = time.time()
-        self.net = PyrennNarx(input_delay=input_delay, output_delay=output_delay)
+        self.net = PyrennNarx(delay=3)
 
         # train network
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
