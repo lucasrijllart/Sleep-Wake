@@ -1,7 +1,7 @@
 import numpy as np
 import random, time, datetime
 from Simulator import Simulator
-from Narx import Narx
+from Narx import PyrennNarx
 import Narx as narx
 import matplotlib.pyplot as plt
 import Genetic
@@ -63,7 +63,7 @@ class Cycle:
         if net_filename is not None:
             start_time = time.time()
             saved_net = narx.load_net(net_filename)
-            self.net = Narx()
+            self.net = PyrennNarx()
             self.net.set_net(saved_net)
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time()-start_time)
 
@@ -76,7 +76,7 @@ class Cycle:
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=400, predict_after=100, brain=None):
+    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -90,7 +90,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain, gamma=gamma)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
@@ -218,7 +218,7 @@ class Cycle:
         print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
                                                                                   input_delay, output_delay, max_epochs)
         start_time = time.time()
-        self.net = Narx(input_delay=input_delay, output_delay=output_delay)
+        self.net = PyrennNarx(input_delay=input_delay, output_delay=output_delay)
 
         # train network
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
