@@ -10,7 +10,7 @@ from Sprites import BrainVehicle, ControllableVehicle
 import os.path
 
 
-def pre_process(raw_data):
+def pre_process_by_time(raw_data):
     """ Creates two arrays of training inputs and targets to feed to the NARX network """
     new_inputs = []
     new_targets = []
@@ -20,6 +20,21 @@ def pre_process(raw_data):
             # extracting targets from data and adding to new list (transposed)
             new_targets.append(np.transpose(np.array(raw_data[vehicle][t][-2:])))
     return [np.transpose(np.array(new_inputs)), np.transpose(np.array(new_targets))]
+
+
+def pre_process_by_vehicle(raw_data):
+    """ Returns the data in a list of vehicles. Every vehicle has a list of timesteps with each motors and sensors """
+    new_inputs = []
+    new_targets = []
+    for vehicle in raw_data:
+        vehicle_timesteps = []
+        for timestep in vehicle:
+            vehicle_timesteps.append(np.transpose(np.array(timestep)))
+        new_inputs.append(np.transpose(np.array(vehicle_timesteps)))
+        new_targets.append(np.transpose(np.array(vehicle_timesteps))[-2:, :])
+    new_inputs = np.array(new_inputs)
+    new_targets = np.array(new_targets)
+    return [new_inputs, new_targets]
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000,
@@ -50,8 +65,8 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
-    print 'Collected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
-    return pre_process(data)
+    print '\nCollected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
+    return pre_process_by_vehicle(data)
 
 
 class Cycle:
@@ -214,7 +229,7 @@ class Cycle:
                                                         graphics=False, gamma=gamma)
 
         # creation of network
-        print 'Network training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
+        print '\nNetwork training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
         print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
                                                                                   input_delay, output_delay, max_epochs)
         start_time = time.time()
