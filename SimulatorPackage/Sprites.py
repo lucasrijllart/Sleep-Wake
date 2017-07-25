@@ -173,7 +173,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.w_ll, self.w_rl, self.w_rr, self.w_lr = 0, 0, 0, 0
-        self.bias_l, self.bias_r = 2, 2  # automatically added wheel bias to wheels
+        self.bias_l, self.bias_r = 0, 0  # automatically added wheel bias to wheels
         self.random_movement = []  # keeps track of the movement before the brain
         self.predicted_movement = []  # keeps track of the predicted movement by the GA
 
@@ -184,12 +184,14 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.motor_right = []
 
     def set_values(self, ll_lr_rr_rl_bl_br):
-        self.w_ll = ll_lr_rr_rl_bl_br[0]
-        self.w_lr = ll_lr_rr_rl_bl_br[1]
-        self.w_rr = ll_lr_rr_rl_bl_br[2]
-        self.w_rl = ll_lr_rr_rl_bl_br[3]
-        self.bias_l = ll_lr_rr_rl_bl_br[4]
-        self.bias_r = ll_lr_rr_rl_bl_br[5]
+        if len(ll_lr_rr_rl_bl_br) >= 4:
+            self.w_ll = ll_lr_rr_rl_bl_br[0]
+            self.w_lr = ll_lr_rr_rl_bl_br[1]
+            self.w_rr = ll_lr_rr_rl_bl_br[2]
+            self.w_rl = ll_lr_rr_rl_bl_br[3]
+            if len(ll_lr_rr_rl_bl_br) > 4:
+                self.bias_l = ll_lr_rr_rl_bl_br[4]
+                self.bias_r = ll_lr_rr_rl_bl_br[5]
 
     def update(self, t, light):
         # update vehicle

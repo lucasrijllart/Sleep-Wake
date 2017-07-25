@@ -18,6 +18,17 @@ def _init_pool(individuals):
     return pool
 
 
+def run_through_brain(prediction, ind):
+    """ Gets wheel data by passing predictions through brain """
+    if len(ind) == 6:
+        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                            (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
+    else:
+        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]),
+                            (prediction[1] * ind[2]) + (prediction[0] * ind[1])]
+    return [wheel_l[0], wheel_r[0]]
+
+
 class GA:
 
     genome_scale = 10
@@ -40,6 +51,12 @@ class GA:
         self.offline = None
 
         self.sim = Simulator()
+
+        # To check the values (can be removed when GA works)
+        self.valist = []
+        self.smax = []
+        self.sav = []
+        self.difff = []
 
     def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
         for i in range(0, len(ind)):
@@ -106,13 +123,10 @@ class GA:
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
             # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [
-                (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-            wheel_log.append([wheel_l[0], wheel_r[0]])
+            wheel_log.append(run_through_brain(prediction, ind))
 
             # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
 
             for it in range(1, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
@@ -122,15 +136,13 @@ class GA:
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-                wheel_log.append([wheel_l[0], wheel_r[0]])
+                wheel_log.append(run_through_brain(prediction, ind))
 
                 # 4. concatenate previous step to the full data
                 data = np.concatenate((data, next_input), axis=1)
 
                 # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+                next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
                 # loop back to 1 until reached timestep
 
             # calculate fitness by taking average of sensory predictions
@@ -175,14 +187,27 @@ class GA:
             #         fit += -1.2
 
             fitness = 0
-            for i in range(0, len(Sl)):
+            for i in range(1, len(Sl)):
                 vA = (wheel_log[0][i] + wheel_log[1][i])/2
+                self.valist.append(vA)
                 diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
-                sA = (sensor_log[0][i] + sensor_log[1][i])/2
-                smax = max(sensor_log[0][i] ,sensor_log[1][i])
-                fitness += vA * (3 - diff) * (smax**2) + sA
-            fitness /= len(Sl)
+                self.difff.append(diff)
+                if sensor_log[0][i] > sensor_log[1][i]:
+                    smax = sensor_log[0][i]
+                    smax = smax * (smax / min(smax, sensor_log[0][i-1]))
+                else:
+                    smax = sensor_log[1][i]
+                    smax = smax * (smax / min(smax, sensor_log[1][i-1]))
 
+                self.smax.append(smax)
+                sA = (sensor_log[0][i] + sensor_log[1][i])/2
+                self.sav.append(sA)
+
+                #print '\nvA:%s diff:%s smax:%s sA:%s' % (vA, diff, smax, sA)
+                #print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
+                fitness += (2 - (max(1.5, diff)/1.5)) * ((smax + 1) + (1+sA))
+            #print (2 - (max(1.5, diff)/1.5))
+            fitness /= len(Sl)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -214,13 +239,10 @@ class GA:
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
             # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [
-                (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-            wheel_log.append([wheel_l[0], wheel_r[0]])
+            wheel_log.append(run_through_brain(prediction, ind))
 
             # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
 
             for it in range(1, self.look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
@@ -230,16 +252,13 @@ class GA:
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [
-                    (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                    (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-                wheel_log.append([wheel_l[0], wheel_r[0]])
+                wheel_log.append(run_through_brain(prediction, ind))
 
                 # 4. concatenate previous step to the full data
                 data = np.concatenate((data, next_input), axis=1)
 
                 # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
+                next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
                 # loop back to 1 until reached timestep
             return [sensor_log, wheel_log]
 
@@ -291,9 +310,26 @@ class GA:
         print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (individuals * generations, best_fit[-1], best_ind[1])
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
+        plt.subplot(151)
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.title('Graph of best fitness by generation in GA\n individuals:%d generations:%d' %
                   (individuals, generations))
+        plt.subplot(152)
+        plt.title('vA over time')
+        plt.plot(range(0, len(self.valist)), self.valist)
+
+        plt.subplot(153)
+        plt.title('Sensor avg')
+        plt.plot(range(0, len(self.sav)), self.sav)
+
+        plt.subplot(154)
+        plt.title('Max sensor')
+        plt.plot(range(0, len(self.smax)), self.smax)
+
+        plt.subplot(155)
+        plt.title('Max diff')
+        plt.plot(range(0, len(self.difff)), self.difff)
+
         plt.show()
 
         return [best_ind[1], sensor_log, predicted_wheels]
