@@ -66,7 +66,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
     print '\nCollected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
-    return pre_process_by_vehicle(data)
+    return pre_process_by_time(data)
 
 
 class Cycle:
@@ -194,14 +194,17 @@ class Cycle:
                 ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename, testing_time,
                                                                                        predict_after, brain)
         plt.suptitle(title)
-        i = np.array(range(0, len(vehicle.sensor_left)))
+        i = np.array(range(0, len(sensor_left)))
+        i2 = np.array(range(predict_after, testing_time))
         plt.subplot(221)
-        plt.title('Left sensor values b=real, r=pred')
-        plt.plot(i, vehicle.sensor_left, 'b', i, sensor_left, 'r')
+        plt.title('Left sensor values')
+        plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
 
         plt.subplot(222)
-        plt.title('Right sensor values b=real, r=pred')
-        plt.plot(i, vehicle.sensor_right, 'b', i, sensor_right, 'r')
+        plt.title('Right sensor values')
+        plt.plot(i, vehicle.sensor_right, 'b', label='real')
+        plt.plot(i2, sensor_log[1], 'r', label='predicted')
+        plt.legend()
 
         msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in range(0, len(sensor_left))]
         plt.subplot(223)
@@ -233,7 +236,7 @@ class Cycle:
         print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
                                                                                   input_delay, output_delay, max_epochs)
         start_time = time.time()
-        self.net = PyrennNarx(delay=3)
+        self.net = PyrennNarx(delay=input_delay)
 
         # train network
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)
@@ -246,7 +249,7 @@ class Cycle:
         """ Create a vehicle and run for some time-steps """
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.random_vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300])
+        self.random_vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300], veh_angle=200)
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t], self.random_vehicle.sensor_left[t],
@@ -255,7 +258,7 @@ class Cycle:
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
-        print self.random_vehicle.bearing[-1]
+
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
