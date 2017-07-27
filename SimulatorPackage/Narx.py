@@ -133,7 +133,7 @@ class PyrennNarx:
         return sensor_log, wheel_log
 
     def predict(self, x, pre_inputs=None, pre_outputs=None):
-        if pre_inputs != None:
+        if pre_inputs is not None:
             y = pr.NNOut(x, self.net, pre_inputs, pre_outputs)
         else:
             delayed_input = []

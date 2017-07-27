@@ -308,7 +308,7 @@ class GA:
         # self.run(veh_pos, veh_angle, light_pos)
         # self.offline = True
 
-        print 'Starting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
+        print '\nStarting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
 
     def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
