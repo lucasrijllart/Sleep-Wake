@@ -31,14 +31,20 @@ def run_through_brain(prediction, ind):
 
 class GA:
 
-    genome_scale = 10
+    genome_scale = 10  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
+
+    # To check the values (can be removed when GA works)
+    mean_fit = []
+    max_fit = []
+    min_fit = []
+    smax = []
+    sav = []
+    difff = []
 
     def __init__(self, graphics=True):
         self.graphics = graphics
-
-        self.individual_reached_light = [False]
-        self.sim = None
+        self.sim = Simulator()
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
@@ -49,14 +55,6 @@ class GA:
         self.data = None
         self.look_ahead = None
         self.offline = None
-
-        self.sim = Simulator()
-
-        # To check the values (can be removed when GA works)
-        self.valist = []
-        self.smax = []
-        self.sav = []
-        self.difff = []
 
     def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
         for i in range(0, len(ind)):
@@ -92,9 +90,6 @@ class GA:
             vehicle.set_values(ind)
             # create Simulation
             vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
-
-            if vehicle.reached_light:
-                self.individual_reached_light.append(True)
 
             # calculate fitness with average distance
             distances = []
@@ -191,7 +186,6 @@ class GA:
             fitness = 0
             for i in range(1, len(Sl)):
                 vA = (wheel_log[0][i] + wheel_log[1][i])/2
-                self.valist.append(vA)
                 diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
                 self.difff.append(diff)
                 if sensor_log[0][i] > sensor_log[1][i]:
@@ -287,6 +281,10 @@ class GA:
         for generation in range(0, individuals * generations):
             if (generation % 50) == 0:
                 print '\riter: ' + str(generation) + '/' + str(individuals * generations),
+                fits = [ind[2] for ind in pool]
+                self.mean_fit.append(np.mean(fits))
+                self.max_fit.append(max(fits))
+                self.min_fit.append(min(fits))
 
             # find 2 random individuals
             rand_ind1 = random.randint(0, individuals - 1)
@@ -317,23 +315,23 @@ class GA:
         print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (individuals * generations, best_fit[-1], best_ind[1])
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
-        plt.subplot(151)
+        plt.subplot(221)
         plt.plot(range(0, len(best_fit)), best_fit)
         plt.title('Graph of best fitness by generation in GA\n individuals:%d generations:%d' %
                   (individuals, generations))
-        plt.subplot(152)
-        plt.title('vA over time')
-        plt.plot(range(0, len(self.valist)), self.valist)
+        plt.subplot(222)
+        plt.title('Individual fitness over time')
+        i = range(0, individuals * generations, 50)
+        plt.scatter(i, self.max_fit, s=4, label='max')
+        plt.scatter(i, self.mean_fit, s=6, label='mean')
+        plt.scatter(i, self.min_fit, s=4, label='min')
+        plt.legend()
 
-        plt.subplot(153)
+        plt.subplot(223)
         plt.title('Sensor avg')
         plt.plot(range(0, len(self.sav)), self.sav)
 
-        plt.subplot(154)
-        plt.title('Max sensor')
-        plt.plot(range(0, len(self.smax)), self.smax)
-
-        plt.subplot(155)
+        plt.subplot(224)
         plt.title('Max diff')
         plt.plot(range(0, len(self.difff)), self.difff)
 

@@ -274,7 +274,7 @@ class Cycle:
         ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
         ga_prediction_vehicle.set_wheels(predicted_wheels)
         ga_prediction_vehicle.random_movement = self.random_vehicle.pos
-        ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels)+1, graphics=True,
+        ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels), graphics=True,
                                                         vehicle=ga_prediction_vehicle)
         self.predicted_pos = ga_prediction_vehicle.pos
 
