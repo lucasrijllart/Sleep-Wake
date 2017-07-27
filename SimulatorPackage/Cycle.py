@@ -66,7 +66,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
         data.append(vehicle_data_in_t)
     print '\nCollected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
-    return pre_process_by_time(data)
+    return pre_process_by_vehicle(data)
 
 
 class Cycle:
@@ -91,7 +91,7 @@ class Cycle:
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2):
+    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2, use_narx=False):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -148,6 +148,77 @@ class Cycle:
                 # 5. set the predicted data to the next input of the prediction
                 next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
                 # loop back to 1 until reached timestep
+        elif use_narx:
+            next_input = np.array(data[:, -1])
+            next_input = np.array([[x] for x in next_input])
+            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+            self.net.set_past_data(data[:, :-1])
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input)
+            # ad the past data to the network
+            self.net.update_past_data(next_input)
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. get motor information
+            wheel_l, wheel_r = [sensor_motor[0, predict_after], sensor_motor[1, predict_after]]
+            wheel_log.append([wheel_l, wheel_r])
+
+            # 4. add this set of data to the input of the prediction
+            next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
+
+            for it in range(1, look_ahead):  # loop through the time steps
+                # 1. predict next sensory output
+                prediction = self.net.predict(next_input)
+
+                # 2. log predicted sensory information to list (used for fitness)
+                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+                # 3. feed it to the brain to get motor information
+                wheel_l, wheel_r = [sensor_motor[0, it + predict_after], sensor_motor[1, it + predict_after]]
+                wheel_log.append([wheel_l, wheel_r])
+
+                # 4. concatenate previous step to the full data
+                #data = np.concatenate((data, next_input), axis=1)
+                self.net.update_past_data(next_input)
+
+                # 5. set the predicted data to the next input of the prediction
+                next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
+                # loop back to 1 until reached timestep
+            brain = 'random'
+
+            # add previous and predicted values for sensors to display in graph
+            sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
+            sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
+
+            # get sensory information of vehicle and compare with predicted
+            plt.figure(1)
+            title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
+                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (
+                    self.net_filename, testing_time,
+                    predict_after, brain)
+            plt.suptitle(title)
+            i = np.array(range(0, len(vehicle.sensor_left)))
+            plt.subplot(221)
+            plt.title('Left sensor values b=real, r=pred')
+            plt.plot(i, vehicle.sensor_left, 'b', i, sensor_left, 'r')
+
+            plt.subplot(222)
+            plt.title('Right sensor values b=real, r=pred')
+            plt.plot(i, vehicle.sensor_right, 'b', i, sensor_right, 'r')
+
+            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in
+                    range(0, len(sensor_left))]
+            plt.subplot(223)
+            plt.title('MSE of left sensor')
+            plt.plot(range(0, len(msel)), msel)
+
+            mser = [((sensor_right[i] - vehicle.sensor_right[i]) ** 2) / len(sensor_right) for i in
+                    range(0, len(sensor_right))]
+            plt.subplot(224)
+            plt.title('MSE of left sensor')
+            plt.plot(range(0, len(mser)), mser)
+            plt.show()
 
         else:  # vehicle does not have a brain, just random movement
             next_input = np.array(data[:, -1])
@@ -184,41 +255,41 @@ class Cycle:
                 # loop back to 1 until reached timestep
             brain = 'random'
 
-        # add previous and predicted values for sensors to display in graph
-        sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
-        sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
+            # add previous and predicted values for sensors to display in graph
+            sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
+            sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
 
-        # get sensory information of vehicle and compare with predicted
-        plt.figure(1)
-        title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
-                ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename, testing_time,
-                                                                                       predict_after, brain)
-        plt.suptitle(title)
-        i = np.array(range(0, len(sensor_left)))
-        i2 = np.array(range(predict_after, testing_time))
-        plt.subplot(221)
-        plt.title('Left sensor values')
-        plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
+            # get sensory information of vehicle and compare with predicted
+            plt.figure(1)
+            title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
+                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename, testing_time,
+                                                                                           predict_after, brain)
+            plt.suptitle(title)
+            i = np.array(range(0, len(sensor_left)))
+            i2 = np.array(range(predict_after, testing_time))
+            plt.subplot(221)
+            plt.title('Left sensor values')
+            plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
 
-        plt.subplot(222)
-        plt.title('Right sensor values')
-        plt.plot(i, vehicle.sensor_right, 'b', label='real')
-        plt.plot(i2, sensor_log[1], 'r', label='predicted')
-        plt.legend()
+            plt.subplot(222)
+            plt.title('Right sensor values')
+            plt.plot(i, vehicle.sensor_right, 'b', label='real')
+            plt.plot(i2, sensor_log[1], 'r', label='predicted')
+            plt.legend()
 
-        msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in range(0, len(sensor_left))]
-        plt.subplot(223)
-        plt.title('MSE of left sensor')
-        plt.plot(range(0, len(msel)), msel)
+            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in range(0, len(sensor_left))]
+            plt.subplot(223)
+            plt.title('MSE of left sensor')
+            plt.plot(range(0, len(msel)), msel)
 
-        mser = [((sensor_right[i]-vehicle.sensor_right[i])**2) / len(sensor_right) for i in range(0, len(sensor_right))]
-        plt.subplot(224)
-        plt.title('MSE of left sensor')
-        plt.plot(range(0, len(mser)), mser)
-        plt.show()
+            mser = [((sensor_right[i]-vehicle.sensor_right[i])**2) / len(sensor_right) for i in range(0, len(sensor_right))]
+            plt.subplot(224)
+            plt.title('MSE of left sensor')
+            plt.plot(range(0, len(mser)), mser)
+            plt.show()
 
-    def train_network(self, learning_runs, learning_time, input_delay, output_delay, max_epochs, gamma=0.3):
-        filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, input_delay, max_epochs)
+    def train_network(self, learning_runs, learning_time, delay, max_epochs, gamma=0.3):
+        filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
         new_filename = filename
@@ -233,10 +304,10 @@ class Cycle:
 
         # creation of network
         print '\nNetwork training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
-        print '\t learning runs=%d, learning time=%d, delays=%d:%d, epochs=%d' % (learning_runs, learning_time,
-                                                                                  input_delay, output_delay, max_epochs)
+        print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (learning_runs, learning_time,
+                                                                                  delay, max_epochs)
         start_time = time.time()
-        self.net = PyrennNarx(delay=input_delay)
+        self.net = PyrennNarx(delay=delay)
 
         # train network
         self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs)

@@ -203,6 +203,10 @@ class GA:
                 # print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
 
                 fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA**2)
+                smax = max(sensor_log[0][i] ,sensor_log[1][i])
+                if sensor_log[0][i] > sensor_log[0][i-1] and sensor_log[1][i] > sensor_log[1][i-1]:
+                    fitness += 0.05
+                fitness += vA/3 * (3 - diff) * (smax + 1)
             fitness /= len(Sl)
             fitness += (abs(sensor_log[0][-1] - sensor_log[0][0]) + abs(sensor_log[1][-1] - sensor_log[1][0]))/2
 
@@ -353,7 +357,7 @@ class GA:
         return [best_ind[1], sensor_log, predicted_wheels]
 
     def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.5, mutation_rate=0.4):
+                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
