@@ -7,10 +7,9 @@ import matplotlib.pyplot as plt
 from Sprites import *
 
 
-def show_sensors_motors(screen, vehicle):
+def show_sensors_motors(screen, vehicle, my_font):
     bearing = vehicle.bearing[-1]
     radius = vehicle.radius + 5
-    my_font = pygame.font.SysFont('monospace', 12)
 
     direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
     direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
@@ -45,7 +44,6 @@ def show_sensors_motors(screen, vehicle):
         [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
 
 
-
 def show_graph(vehicle):
     i = range(0, len(vehicle.sensor_left))
 
@@ -60,15 +58,16 @@ def show_graph(vehicle):
 
 
 class Simulator:
+    window_width = 1800  # 1240
+    window_height = 1000  # 720
 
     def __init__(self):
         pygame.init()
-        self.window_width = 1800  # 1240
-        self.window_height = 1000  # 720
-        self.number_of_iterations = 0
+        self.values_font = pygame.font.SysFont('monospace', 12)
+        self.cycle_font = pygame.font.SysFont('', 24)
         self.light = None
 
-    def run_simulation(self, iteration, graphics, vehicle, light=None, show_sen_mot_graph=False):
+    def run_simulation(self, iteration, graphics, vehicle, cycle='', light=None, show_sen_mot_graph=False):
         clock = pygame.time.Clock()  # clock to count ticks and fps
         if light is not None:  # if a light is provided then update the light to this
             self.light = light
@@ -78,28 +77,27 @@ class Simulator:
             background = pygame.Surface(screen.get_size())
             background = background.convert(background)
             background.fill([240, 240, 240])
-            self.number_of_iterations = 0
 
-        for t in range(1, iteration+1):
+        for t in range(1, iteration + 1):
             clock.tick()
-
-            # conditions for simulation stop: light and maybe out of bounds
-            # if int(vehicle.pos[-1][0]) == light.pos[0] and int(vehicle.pos[-1][1]) == light.pos[1]:
-                # break
 
             all_sprites.update(t, self.light)
 
             if graphics:
                 screen.blit(background, (0, 0))
+                if cycle == 'wake (training)' and t == iteration:  # just before goes to sleep write sleep
+                    screen.blit(self.cycle_font.render('sleep', 1, (0, 0, 0)), [5, 5])
+                else:
+                    screen.blit(self.cycle_font.render(cycle, 1, (0, 0, 0)), [5, 5])
                 all_sprites.draw(screen)
 
-                show_sensors_motors(screen, vehicle)
+                show_sensors_motors(screen, vehicle, self.values_font)
 
                 pygame.display.flip()
-                pygame.display.set_caption('Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
+                pygame.display.set_caption(
+                    'Braitenberg vehicle simulation - ' + str(format(clock.get_fps(), '.0f')) + 'fps')
 
                 time.sleep(0.03)
-            self.number_of_iterations += 1
 
         if show_sen_mot_graph:
             show_graph(vehicle)
@@ -151,8 +149,8 @@ class Simulator:
         self.close()
         return vehicle
 
-    def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                         light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
+    def init_simulation(self, iteration, graphics, cycle, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+                        light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)
@@ -160,5 +158,5 @@ class Simulator:
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
         self.light = Light(light_pos)
-        vehicle = self.run_simulation(iteration, graphics, vehicle)
+        vehicle = self.run_simulation(iteration, graphics, vehicle, cycle)
         return vehicle

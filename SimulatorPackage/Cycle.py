@@ -249,8 +249,8 @@ class Cycle:
         """ Create a vehicle and run for some time-steps """
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, veh_pos=[300, 300],
-                                                       veh_angle=200)
+        self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
+                                                       veh_pos=[300, 300], veh_angle=200)
         vehicle_move = []
         for t in range(0, random_movements):
             vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t],
@@ -274,7 +274,7 @@ class Cycle:
         ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
         ga_prediction_vehicle.set_wheels(predicted_wheels)
         ga_prediction_vehicle.random_movement = self.random_vehicle.pos
-        ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels), graphics=True,
+        ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels), graphics=True, cycle='sleep',
                                                         vehicle=ga_prediction_vehicle)
         self.predicted_pos = ga_prediction_vehicle.pos
 
@@ -315,7 +315,8 @@ class Cycle:
         new_vehicle.random_movement = self.random_vehicle.pos
         new_vehicle.predicted_movement = self.predicted_pos
 
-        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, vehicle=new_vehicle)
+        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',
+                                                 vehicle=new_vehicle)
 
         # get positional information of vehicle and compare with predicted
         plt.figure(1)
