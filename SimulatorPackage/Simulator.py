@@ -80,7 +80,7 @@ class Simulator:
             background.fill([240, 240, 240])
             self.number_of_iterations = 0
 
-        for t in range(1, iteration):
+        for t in range(1, iteration+1):
             clock.tick()
 
             # conditions for simulation stop: light and maybe out of bounds

@@ -32,7 +32,7 @@ def run_through_brain(prediction, ind):
 class GA:
 
     genome_scale = 10
-    genome_length = 6
+    genome_length = 4  # number of genes, can be 4 or 6
 
     def __init__(self, graphics=True):
         self.graphics = graphics
@@ -145,15 +145,16 @@ class GA:
                 next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
                 # loop back to 1 until reached timestep
 
-            # calculate fitness by taking average of sensory predictions
-            # fitness = (sum(sensor_log[0]) + sum(sensor_log[1]))# / len(sensor_log[0])
-
             sim = Simulator()
             vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
             wheel_log1 = np.copy(wheel_log)
             vehicle.set_wheels(wheel_log)
             sim.light = Light([1100, 600])
             sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+
+            # calculate fitness by taking average of sensory predictions
+            # fitness = (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
+            # fitness = sensor_log[0][-1] + sensor_log[1][-1]
 
             # wheel_log = np.transpose(np.array(wheel_log))
             # fitness_after = 0
@@ -185,6 +186,7 @@ class GA:
             #         fit += -1.1
             #     else:
             #         fit += -1.2
+            # fitness = fit
 
             fitness = 0
             for i in range(1, len(Sl)):
@@ -203,11 +205,15 @@ class GA:
                 sA = (sensor_log[0][i] + sensor_log[1][i])/2
                 self.sav.append(sA)
 
-                #print '\nvA:%s diff:%s smax:%s sA:%s' % (vA, diff, smax, sA)
-                #print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
-                fitness += (2 - (max(1.5, diff)/1.5)) * ((smax + 1) + (1+sA))
-            #print (2 - (max(1.5, diff)/1.5))
+                # print '\nvA:%s diff:%s smax:%s sA:%s' % (vA, diff, smax, sA)
+                # print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
+
+                fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA)
+            fitness += (sensor_log[0][-1] - sensor_log[0][0]) + (sensor_log[1][-1] - sensor_log[1][0])
             fitness /= len(Sl)
+
+
+            #print str(ind) + ' : ' + str(fitness)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -279,7 +285,8 @@ class GA:
                 best_ind = ind
         best_fit = [best_ind[2]]
         for generation in range(0, individuals * generations):
-            print '\riter: ' + str(generation) + '/' + str(individuals * generations),
+            if (generation % 50) == 0:
+                print '\riter: ' + str(generation) + '/' + str(individuals * generations),
 
             # find 2 random individuals
             rand_ind1 = random.randint(0, individuals - 1)
@@ -335,7 +342,7 @@ class GA:
         return [best_ind[1], sensor_log, predicted_wheels]
 
     def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
+                    individuals=25, generations=10, crossover_rate=0.5, mutation_rate=0.4):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:

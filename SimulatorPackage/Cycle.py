@@ -60,7 +60,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             brain = Genetic.make_random_brain()
             random_brains += 1
         # add 1 because the simulation returns iterations-1 as the first timestep is the starting pos (not recorded)
-        v = sim.quick_simulation(iterations + 1, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
+        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -105,7 +105,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=brain, gamma=gamma)
+        vehicle = sim.init_simulation(testing_time, True, veh_angle=200, brain=brain, gamma=gamma)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(
@@ -249,16 +249,16 @@ class Cycle:
         """ Create a vehicle and run for some time-steps """
         # Create vehicle in simulation
         self.sim = Simulator()
-        self.random_vehicle = self.sim.init_simulation(random_movements + 1, graphics=True, veh_pos=[300, 300], veh_angle=200)
+        self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, veh_pos=[300, 300],
+                                                       veh_angle=200)
         vehicle_move = []
         for t in range(0, random_movements):
-            vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t], self.random_vehicle.sensor_left[t],
-                                 self.random_vehicle.sensor_right[t]])
+            vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t],
+                                 self.random_vehicle.sensor_left[t], self.random_vehicle.sensor_right[t]])
         vehicle_first_move = []
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
-
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # run GA and find best brain to give to testing
