@@ -104,41 +104,10 @@ class GA:
             return fitness
 
         else:  # if offline, get fitness by using predictions
-            sensor_log = np.array([[], []])
-            wheel_log = []
-            data = self.data
-
-            next_input = np.array(data[:, -1])
-            next_input = np.array([[x] for x in next_input])
-
-            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
-            # 1. predict next sensory output
-            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-            # 2. log predicted sensory information to list (used for fitness)
-            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-            # 3. feed it to the brain to get motor information
-            wheel_log.append(run_through_brain(prediction, ind))
-
-            # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-
-            for it in range(1, self.look_ahead):  # loop through the time steps
-                # 1. predict next sensory output
-                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
-                # 2. log predicted sensory information to list (used for fitness)
-                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-                # 3. feed it to the brain to get motor information
-                wheel_log.append(run_through_brain(prediction, ind))
-
-                # 4. concatenate previous step to the full data
-                data = np.concatenate((data, next_input), axis=1)
-
-                # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-                # loop back to 1 until reached timestep
+            if self.use_narx:  # if we use NARX
+                sensor_log, wheel_log = self.net.predict_ahead(self.data, ind, self.look_ahead)
+            else:  # if we use NOE
+                sensor_log, wheel_log = self.net.predict_noe(self.data, ind, self.look_ahead)
 
             sim = Simulator()
             vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
@@ -198,15 +167,7 @@ class GA:
                 self.smax.append(smax)
                 sA = (sensor_log[0][i] + sensor_log[1][i])/2
                 self.sav.append(sA)
-
-                # print '\nvA:%s diff:%s smax:%s sA:%s' % (vA, diff, smax, sA)
-                # print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
-
                 fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA**2)
-                smax = max(sensor_log[0][i] ,sensor_log[1][i])
-                if sensor_log[0][i] > sensor_log[0][i-1] and sensor_log[1][i] > sensor_log[1][i-1]:
-                    fitness += 0.05
-                fitness += vA/3 * (3 - diff) * (smax + 1)
             fitness /= len(Sl)
             fitness += (abs(sensor_log[0][-1] - sensor_log[0][0]) + abs(sensor_log[1][-1] - sensor_log[1][0]))/2
 
@@ -227,45 +188,13 @@ class GA:
             return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
     def _run_winner(self, graphics, ind):
-        if self.offline:
-            sensor_log = np.array([[], []])
-            wheel_log = []
-            data = self.data
+        if self.offline:  # offline means in sleep cycle
+            if self.use_narx:  # if we use the NARX network
+                return self.net.predict_ahead(self.data, ind, self.look_ahead)
+            else:  # if we use the NOE network
+                return self.net.predict_noe(self.data, ind, self.look_ahead)
 
-            next_input = np.array(data[:, -1])
-            next_input = np.array([[x] for x in next_input])
-
-            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
-            # 1. predict next sensory output
-            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-            # 2. log predicted sensory information to list (used for fitness)
-            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-            # 3. feed it to the brain to get motor information
-            wheel_log.append(run_through_brain(prediction, ind))
-
-            # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-
-            for it in range(1, self.look_ahead):  # loop through the time steps
-                # 1. predict next sensory output
-                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
-                # 2. log predicted sensory information to list (used for fitness)
-                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-                # 3. feed it to the brain to get motor information
-                wheel_log.append(run_through_brain(prediction, ind))
-
-                # 4. concatenate previous step to the full data
-                data = np.concatenate((data, next_input), axis=1)
-
-                # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-                # loop back to 1 until reached timestep
-            return [sensor_log, wheel_log]
-
-        else:
+        else:  # this is for evolving real vehicles
             print 'Running: ' + str(ind) + str(self._get_fitness(ind))
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
             vehicle.set_values(ind)
@@ -356,7 +285,7 @@ class GA:
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
-    def run_offline(self, narx, data, look_ahead=100, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
+    def run_offline(self, narx, data, look_ahead, use_narx, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
                     individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
         if light_pos is None:
             light_pos = [1100, 600]
@@ -367,6 +296,7 @@ class GA:
         self.net = narx
         self.data = data
         self.look_ahead = look_ahead
+        self.use_narx = use_narx
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

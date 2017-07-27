@@ -1,47 +1,47 @@
 from Cycle import Cycle
 
 # Train Network
-learning_runs = 400
-learning_time = 150
-tap_delay = 20
-max_epochs = 100
+learning_runs = 500
+learning_time = 200
+tap_delay = 30
+max_epochs = 50
 
-# Wake learning
-initial_random_movement = 25
+# Wake learning has to be more than delay
+initial_random_movement = 50
 
 # Error graph
 testing_time = 200
-predict_after = 20
+predict_after = 50  # has to be more than delay
 
 # Sleep
-look_ahead = 30
-individuals = 20
-generations = 50
+look_ahead = 50
+individuals = 40
+generations = 20
 
 # Wake testing
-wake_test_iter = 250
+wake_test_iter = 100
 
-
+use_narx = False
 # Booleans for running
 train_network = False
 error_graph = True
 
-run_cycles = False
+run_cycles = True
 
-# Functions 'narx/r400t200d20e100_good'
-cycle = Cycle(net_filename='narx/r100t150d20e100')
+# Functions
+cycle = Cycle(net_filename='narx/r100t100d50e200e1_04')
 
 if train_network:
     cycle.train_network(learning_runs, learning_time, tap_delay, max_epochs)
 
 if error_graph:
-    brain = [-1, 10, -1, 10, 5, 5]
-    cycle.show_error_graph(testing_time=testing_time, predict_after=predict_after, brain=None, use_narx=True)
+    brain = [-1, 10, -1, 10, 10, 10]
+    cycle.show_error_graph(testing_time=testing_time, predict_after=predict_after, brain=None, use_narx=use_narx)
 
 
 if run_cycles:
     cycle.wake_learning(initial_random_movement)
 
-    cycle.sleep(look_ahead, individuals, generations)
+    cycle.sleep(look_ahead, individuals, generations, use_narx)
 
     cycle.wake_testing(wake_test_iter)

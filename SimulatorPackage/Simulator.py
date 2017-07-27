@@ -136,7 +136,7 @@ class Simulator:
     def close():
         pygame.display.quit()
 
-    def quick_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+    def quick_simulation(self, iteration, graphics=False, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
                          light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation then closes then window """
         if brain is not None:
