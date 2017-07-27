@@ -282,28 +282,37 @@ class Cycle:
         v_iter = np.array(range(0, len(ga_prediction_vehicle.sensor_left)))  # GA predicted vehicle iterations
 
         plt.figure(1)
-        plt.suptitle('Graph of predicted vs actual sensor values and Mean Squared Error. Lookahead:' +
-                     str(look_ahead))
+        plt.suptitle('Graph of predicted vs actual sensor values and Mean Squared Error. Lookahead:' + str(look_ahead))
         plt.subplot(221)
         plt.title('Left sensor values')
-        plt.plot(v_iter, ga_prediction_vehicle.sensor_left, 'b', v_iter, predicted_sensors[0], 'g')
+        plt.xlabel('iterations')
+        plt.ylabel('sensor value')
+        plt.plot(v_iter, ga_prediction_vehicle.sensor_left, 'b', label='actual')
+        plt.plot(v_iter, predicted_sensors[0], 'g', label='predicted')
+        plt.legend()
 
         plt.subplot(222)
         plt.title('Right sensor values')
+        plt.xlabel('iterations')
+        plt.ylabel('sensor value')
         plt.plot(v_iter, ga_prediction_vehicle.sensor_right, 'b', label='actual')
         plt.plot(v_iter, predicted_sensors[1], 'g', label='predicted')
         plt.legend()
 
         plt.subplot(223)
+        plt.title('Left sensor MSE')
+        plt.xlabel('iterations')
+        plt.ylabel('mean squared error')
         msel = [((predicted_sensors[0][it] - ga_prediction_vehicle.sensor_left[it]) ** 2) / len(v_iter) for it in
                 range(0, len(v_iter))]
-        plt.title('Left motor values')
         plt.plot(v_iter, msel)
 
         plt.subplot(224)
+        plt.title('Right sensor MSE')
+        plt.xlabel('iterations')
+        plt.ylabel('mean squared error')
         mser = [((predicted_sensors[1][it] - ga_prediction_vehicle.sensor_right[it]) ** 2) / len(v_iter) for it in
                 range(0, len(v_iter))]
-        plt.title('Right motor values')
         plt.plot(v_iter,  mser)
         plt.show()
 
@@ -320,15 +329,25 @@ class Cycle:
 
         # get positional information of vehicle and compare with predicted
         plt.figure(1)
+        plt.suptitle('Predicted vs actual movement in wake (testing) cycle')
+        plt.subplot(121)
+        plt.title('Predicted vs actual movement in space')
+        plt.xlabel('x coordinate')
+        plt.ylabel('y coordinate')
         actual_move = np.transpose(actual_vehicle.pos)
         pred_move = np.transpose(self.predicted_pos)
-        i = np.array(range(0, len(actual_vehicle.pos)))
-        plt.title('Graph of predicted vs actual movement in space')
         plt.scatter(actual_move[0], actual_move[1], s=7, c='r', label='actual')
         plt.scatter(pred_move[0], pred_move[1], s=10, c='g', label='predicted')
         plt.plot(actual_move[0], actual_move[1], 'r')
         plt.plot(pred_move[0], pred_move[1], 'g')
-
         plt.legend()
+
+        plt.subplot(122)
+        plt.title('Movement prediction error')
+        plt.xlabel('iterations')
+        plt.ylabel('mean squared error')
+        mse = [(((pred_move[0][it] - actual_move[0][it] + pred_move[1][it] - actual_move[1][it])/2) ** 2) /
+               len(pred_move[0]) for it in range(0, len(pred_move[0]))]
+        plt.plot(range(0, len(mse)), mse)
 
         plt.show()

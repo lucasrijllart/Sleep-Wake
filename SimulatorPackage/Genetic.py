@@ -202,12 +202,11 @@ class GA:
                 # print '\nvA:%s diff:%s smax:%s sA:%s' % (vA, diff, smax, sA)
                 # print '%s + %s + %s + %s' % (vA/2, (1-diff/2), (smax+1)**4, (1+sA)**4)
 
-                fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA)
-            fitness += (sensor_log[0][-1] - sensor_log[0][0]) + (sensor_log[1][-1] - sensor_log[1][0])
+                fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA**2)
             fitness /= len(Sl)
+            fitness += (abs(sensor_log[0][-1] - sensor_log[0][0]) + abs(sensor_log[1][-1] - sensor_log[1][0]))/2
 
-
-            #print str(ind) + ' : ' + str(fitness)
+            # print str(ind) + ' : ' + str(fitness)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -315,12 +314,26 @@ class GA:
         print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (individuals * generations, best_fit[-1], best_ind[1])
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
+        plt.figure(1)
+        if self.genome_length == 4:
+            brain = '[%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
+                                       format(best_ind[1][2], '.2f'),format(best_ind[1][3], '.2f'))
+        else:
+            brain = '[%s,%s,%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
+                                             format(best_ind[1][2], '.2f'), format(best_ind[1][3], '.2f'),
+                                             format(best_ind[1][4], '.2f'), format(best_ind[1][5], '.2f'))
+        plt.suptitle('Finished GA of %d individuals and %d generations, with fitness %s of brain: %s' % (
+            individuals, generations, format(best_ind[2], '.3f'), brain))
         plt.subplot(221)
+        plt.title('Graph of best fitness by generation')
+        plt.xlabel('iterations')
+        plt.ylabel('max fitness')
         plt.plot(range(0, len(best_fit)), best_fit)
-        plt.title('Graph of best fitness by generation in GA\n individuals:%d generations:%d' %
-                  (individuals, generations))
+
         plt.subplot(222)
         plt.title('Individual fitness over time')
+        plt.xlabel('iterations')
+        plt.ylabel('fitness of individuals')
         i = range(0, individuals * generations, 50)
         plt.scatter(i, self.max_fit, s=4, label='max')
         plt.scatter(i, self.mean_fit, s=6, label='mean')
