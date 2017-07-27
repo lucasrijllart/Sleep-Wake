@@ -35,7 +35,7 @@ class PyrennNarx:
     def getNet(self):
         return self.net
 
-    def train(self, inputs, targets, max_iter=200, verbose=False):
+    def train(self, inputs, targets, max_iter=200, verbose=False, use_mean=True):
         print targets
         input_matrices = []
         target_matrices = []
@@ -57,7 +57,10 @@ class PyrennNarx:
                 rolled = np.reshape(np.roll(vehicle[0], it), (1, c))
                 # replace the missing observations
                 # with zeros or mean of timeseries
-                rolled[0, 0:it] = 0.0
+                if use_mean:
+                    rolled[0, 0:it] = mean
+                else:
+                    rolled[0, 0:it] = 0.0
                 delay_matrix = np.concatenate((delay_matrix, rolled), axis=0)
             # print delay_matrix.shape
 
@@ -68,7 +71,10 @@ class PyrennNarx:
                     rolled = np.reshape(np.roll(vehicle[idx], it), (1, c))
                     # replace the missing observations
                     # with zeros or mean of timeseries
-                    rolled[0, 0:it] = 0.0
+                    if use_mean:
+                        rolled[0, 0:it] = mean
+                    else:
+                        rolled[0, 0:it] = 0.0
                     delay_matrix = np.concatenate((delay_matrix, rolled), axis=0)
 
             delay_matrix = np.delete(delay_matrix, -1, axis=1)

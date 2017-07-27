@@ -11,7 +11,7 @@ initial_random_movement = 50
 
 # Error graph
 testing_time = 200
-predict_after = 50  # has to be more than delay
+predict_after = 30  # has to be more than delay
 
 # Sleep
 look_ahead = 50
@@ -21,7 +21,7 @@ generations = 20
 # Wake testing
 wake_test_iter = 100
 
-use_narx = False
+use_narx = True
 # Booleans for running
 train_network = False
 error_graph = True
@@ -29,10 +29,10 @@ error_graph = True
 run_cycles = True
 
 # Functions
-cycle = Cycle(net_filename='narx/r100t100d50e200e1_04')
+cycle = Cycle(net_filename='narx/r100t150d20e100')
 
 if train_network:
-    cycle.train_network(learning_runs, learning_time, tap_delay, max_epochs)
+    cycle.train_network(learning_runs, learning_time, tap_delay, max_epochs, use_mean=True)
 
 if error_graph:
     brain = [-1, 10, -1, 10, 10, 10]
