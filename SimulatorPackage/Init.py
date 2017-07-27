@@ -1,7 +1,7 @@
 from Cycle import Cycle
 
 # Train Network
-learning_runs = 100
+learning_runs = 400
 learning_time = 150
 tap_delay = 20
 max_epochs = 100
