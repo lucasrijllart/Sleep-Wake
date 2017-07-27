@@ -185,40 +185,6 @@ class Cycle:
                 # 5. set the predicted data to the next input of the prediction
                 next_input = np.array([[wheel_l], [wheel_r], [prediction[0]], [prediction[1]]])
                 # loop back to 1 until reached timestep
-            brain = 'random'
-
-            # add previous and predicted values for sensors to display in graph
-            sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
-            sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
-
-            # get sensory information of vehicle and compare with predicted
-            plt.figure(1)
-            title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
-                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (
-                    self.net_filename, testing_time,
-                    predict_after, brain)
-            plt.suptitle(title)
-            i = np.array(range(0, len(vehicle.sensor_left)))
-            plt.subplot(221)
-            plt.title('Left sensor values b=real, r=pred')
-            plt.plot(i, vehicle.sensor_left, 'b', i, sensor_left, 'r')
-
-            plt.subplot(222)
-            plt.title('Right sensor values b=real, r=pred')
-            plt.plot(i, vehicle.sensor_right, 'b', i, sensor_right, 'r')
-
-            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in
-                    range(0, len(sensor_left))]
-            plt.subplot(223)
-            plt.title('MSE of left sensor')
-            plt.plot(range(0, len(msel)), msel)
-
-            mser = [((sensor_right[i] - vehicle.sensor_right[i]) ** 2) / len(sensor_right) for i in
-                    range(0, len(sensor_right))]
-            plt.subplot(224)
-            plt.title('MSE of left sensor')
-            plt.plot(range(0, len(mser)), mser)
-            plt.show()
 
         else:  # vehicle does not have a brain, just random movement
             next_input = np.array(data[:, -1])

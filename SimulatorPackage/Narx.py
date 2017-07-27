@@ -1,6 +1,7 @@
 import pyrenn as pr
 import numpy as np
 from sklearn.neural_network import MLPRegressor
+from Genetic import run_through_brain
 
 def load_net(filename='narxNet'):
     return pr.loadNN(filename)
@@ -104,6 +105,46 @@ class PyrennNarx:
 
     def save_to_file(self, filename='narxNet'):
         pr.saveNN(self.net, filename=filename)
+
+    def predict_ahead(self, data, ind, look_ahead):
+        sensor_log = np.array([[], []]) #return that
+        wheel_log = [] # return that
+
+        next_input = np.array(data[:, -1])
+        next_input = np.array([[x] for x in next_input])
+
+        self.net.set_past_data(data[:, :-1]) #set the past data
+        # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+        # 1. predict next sensory output
+        prediction = self.predict(next_input)
+        # ad the past data to the network
+        self.net.update_past_data(next_input)
+        # 2. log predicted sensory information to list (used for fitness)
+        sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+        # 3. feed it to the brain to get motor information
+        wheel_log.append(run_through_brain(prediction, ind))
+
+        # 4. add this set of data to the input of the prediction
+        next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
+
+        for it in range(1, look_ahead):  # loop through the time steps
+            # 1. predict next sensory output
+            prediction = self.net.predict(next_input)
+
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. feed it to the brain to get motor information
+            wheel_log.append(run_through_brain(prediction, ind))
+
+            # 4. append previous step to the full data
+            self.net.update_past_data(next_input)
+
+            # 5. set the predicted data to the next input of the prediction
+            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
+            # loop back to 1 until reached time-step
+        return wheel_log, sensor_log
 
 class NarxMLP:
 

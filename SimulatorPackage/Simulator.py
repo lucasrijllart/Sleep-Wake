@@ -149,7 +149,7 @@ class Simulator:
         self.close()
         return vehicle
 
-    def init_simulation(self, iteration, graphics, cycle, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+    def init_simulation(self, iteration, graphics, cycle='', veh_pos=[300, 300], veh_angle=random.randint(0, 360),
                         light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
         if brain is not None:
