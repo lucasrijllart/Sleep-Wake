@@ -1,7 +1,7 @@
 import numpy as np
 import random, time, datetime
 from Simulator import Simulator
-from Narx import PyrennNarx
+from Narx import PyrennNarx, NarxMLP
 import Narx as narx
 import matplotlib.pyplot as plt
 import Genetic
@@ -230,7 +230,7 @@ class Cycles:
             plt.plot(range(0, len(mser)), mser)
             plt.show()
 
-    def train_network(self, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
+    def train_network(self,api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
@@ -246,16 +246,22 @@ class Cycles:
 
         # creation of network
         print '\nNetwork training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
-        print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (learning_runs, learning_time,
-                                                                                  delay, max_epochs)
+        print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (learning_runs, learning_time, delay, max_epochs)
+
         start_time = time.time()
-        self.net = PyrennNarx(layers=layers, delay=delay)
+        if api == 'pyrenn':
+            self.net = PyrennNarx(layers=layers, delay=delay)
+            # train network
+            self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
+            # save network to file
+            self.net.save_to_file(filename=filename)
+        elif api == 'skmlp':
+            self.net = NarxMLP()
 
-        # train network
-        self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
+            self.net.fit(train_input, delay, use_mean)
+        else:
+            print 'Wrong network type given'
 
-        # save network to file
-        self.net.save_to_file(filename=filename)
         print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time()-start_time))
 
     def wake_learning(self, random_movements):
@@ -366,5 +372,5 @@ class Cycles:
         plt.show()
 
         if benchmark:
-            random_brain_benchmark(random_brains=10000, iterations=iterations, start_pos=self.random_vehicle.pos[-1],
+            random_brain_benchmark(random_brains=1000, iterations=iterations, start_pos=self.random_vehicle.pos[-1],
                                    start_a=self.random_vehicle.angle, light=self.sim.light, actual=actual_vehicle)
