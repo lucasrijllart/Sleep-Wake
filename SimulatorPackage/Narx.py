@@ -35,11 +35,11 @@ class PyrennNarx:
     def getNet(self):
         return self.net
 
-    def train(self, inputs, targets, max_iter=200, verbose=False, use_mean=True):
-        print targets
+    def train(self, training_data, max_iter=200, verbose=False, use_mean=True):
         input_matrices = []
         target_matrices = []
-        for vehicle in inputs:
+        slice_point = self.delay - 1
+        for vehicle in training_data:
             r, c = vehicle.shape
 
             # create the TARGET, sensor inputs for both sensors
@@ -78,7 +78,10 @@ class PyrennNarx:
                     delay_matrix = np.concatenate((delay_matrix, rolled), axis=0)
 
             delay_matrix = np.delete(delay_matrix, -1, axis=1)
-
+            # drop the columns that needed padding
+            for _ in range(0, slice_point):
+                delay_matrix = np.delete(delay_matrix, 0, axis=1)
+                target = np.delete(target, 0, axis=1)
             # collect the input, target matrices
             input_matrices.append(delay_matrix)
             target_matrices.append(target)

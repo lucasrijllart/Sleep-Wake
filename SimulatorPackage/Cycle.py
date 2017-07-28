@@ -187,7 +187,7 @@ class Cycle:
             plt.plot(range(0, len(mser)), mser)
             plt.show()
 
-    def train_network(self, learning_runs, learning_time, delay, max_epochs, gamma=0.3, use_mean=True):
+    def train_network(self, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
@@ -206,10 +206,10 @@ class Cycle:
         print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (learning_runs, learning_time,
                                                                                   delay, max_epochs)
         start_time = time.time()
-        self.net = PyrennNarx(delay=delay)
+        self.net = PyrennNarx(layers=layers, delay=delay)
 
         # train network
-        self.net.train(train_input, train_target, verbose=True, max_iter=max_epochs, use_mean=use_mean)
+        self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
 
         # save network to file
         self.net.save_to_file(filename=filename)
