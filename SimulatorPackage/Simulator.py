@@ -67,7 +67,7 @@ class Simulator:
         self.cycle_font = pygame.font.SysFont('', 24)
         self.light = None
 
-    def run_simulation(self, iteration, graphics, vehicle, cycle='', light=None, show_sen_mot_graph=False):
+    def run_simulation(self, iteration, graphics, vehicle, light=None, cycle='', show_sen_mot_graph=False):
         clock = pygame.time.Clock()  # clock to count ticks and fps
         if light is not None:  # if a light is provided then update the light to this
             self.light = light

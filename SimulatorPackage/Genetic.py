@@ -10,6 +10,18 @@ def make_random_brain():
     return [random.uniform(-GA.genome_scale, GA.genome_scale) for _ in range(0, GA.genome_length)]
 
 
+def get_fitness(start_pos, start_a, brain, iterations, light):
+    # create sprites
+    vehicle = BrainVehicle(start_pos, start_a)
+    vehicle.set_values(brain)
+    # create Simulation
+    vehicle = GA.sim.run_simulation(iterations, False, vehicle, light)
+    sensor_left = vehicle.sensor_left
+    sensor_right = vehicle.sensor_right
+    fitness = np.mean(sensor_left) + np.mean(sensor_right)
+    return fitness
+
+
 def _init_pool(individuals):
     pool = []
     for i in range(0, individuals):
@@ -34,6 +46,8 @@ class GA:
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
 
+    sim = Simulator()
+
     # To check the values (can be removed when GA works)
     mean_fit = []
     max_fit = []
@@ -44,17 +58,59 @@ class GA:
 
     def __init__(self, graphics=True):
         self.graphics = graphics
-        self.sim = Simulator()
 
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
         self.light = None
         self.iterations = None
+        self.individuals = None
+        self.generations = None
 
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
         self.look_ahead = None
         self.offline = None
+        self.use_narx = None
+
+    def show_fitness_graph(self, best_ind, best_fit):
+        plt.figure(1)
+        if self.genome_length == 4:
+            brain = '[%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
+                                       format(best_ind[1][2], '.2f'), format(best_ind[1][3], '.2f'))
+        else:
+            brain = '[%s,%s,%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
+                                             format(best_ind[1][2], '.2f'), format(best_ind[1][3], '.2f'),
+                                             format(best_ind[1][4], '.2f'), format(best_ind[1][5], '.2f'))
+        plt.suptitle('Finished GA of %d individuals and %d generations, with fitness %s of brain: %s' % (
+            self.individuals, self.generations, format(best_ind[2], '.3f'), brain))
+        plt.subplot(221)
+        plt.title('Graph of best fitness by generation')
+        plt.xlabel('iterations')
+        plt.ylabel('max fitness')
+        plt.plot(range(0, len(best_fit)), best_fit)
+
+        plt.subplot(222)
+        plt.title('Individual fitness over time')
+        plt.xlabel('iterations')
+        plt.ylabel('fitness of individuals')
+        i = range(0, self.individuals * self.generations, 50)
+        plt.scatter(i, self.max_fit, s=4, label='max')
+        plt.plot(i, self.max_fit)
+        plt.scatter(i, self.mean_fit, s=6, label='mean')
+        plt.plot(i, self.mean_fit)
+        plt.scatter(i, self.min_fit, s=4, label='min')
+        plt.plot(i, self.min_fit)
+        plt.legend()
+
+        plt.subplot(223)
+        plt.title('Sensor avg')
+        plt.plot(range(0, len(self.sav)), self.sav)
+
+        plt.subplot(224)
+        plt.title('Max diff')
+        plt.plot(range(0, len(self.difff)), self.difff)
+
+        plt.show()
 
     def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
         for i in range(0, len(ind)):
@@ -83,95 +139,23 @@ class GA:
             i += 1
         return all_individuals
 
-    def _get_fitness(self, ind):
+    def _get_fitness(self, brain):
         if self.offline is False:
-            # create sprites
-            vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
-            vehicle.set_values(ind)
-            # create Simulation
-            vehicle = self.sim.run_simulation(self.iterations, False, vehicle, self.light)
-
-            # calculate fitness with average distance
-            distances = []
-            for step in vehicle.pos:
-                distances.append(math.sqrt((step[0] - self.light.pos[0]) ** 2 + (step[1] - self.light.pos[1]) ** 2))
-            fitness = 0
-            for distance in distances:
-                fitness += distance
-            fitness /= len(distances)
-            fitness = 1000 / fitness
-
-            return fitness
-
+            return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
             if self.use_narx:  # if we use NARX
-                sensor_log, wheel_log = self.net.predict_ahead(self.data, ind, self.look_ahead)
+                sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
             else:  # if we use NOE
-                sensor_log, wheel_log = self.net.predict_noe(self.data, ind, self.look_ahead)
+                sensor_log, wheel_log = self.net.predict_noe(self.data, brain, self.look_ahead)
+            sensor_left = sensor_log[0]
+            sensor_right = sensor_log[1]
 
-            sim = Simulator()
-            vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
-            wheel_log1 = np.copy(wheel_log)
-            vehicle.set_wheels(wheel_log)
-            sim.light = Light([1100, 600])
-            sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
-
-            # calculate fitness by taking average of sensory predictions
-            # fitness = (sum(sensor_log[0]) + sum(sensor_log[1])) / len(sensor_log[0])
-            # fitness = sensor_log[0][-1] + sensor_log[1][-1]
-
-            # wheel_log = np.transpose(np.array(wheel_log))
-            # fitness_after = 0
-            # for i in range(0, len(sensor_log[0])):
-            #     v = abs(wheel_log[0][i] + wheel_log[1][i])
-            #     diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
-            #     max_ = max(sensor_log[0][i], sensor_log[1][i])
-            #     avg = (sensor_log[0][i] + sensor_log[1][i]) / 2
-            #     fitness = ((v * (1 - diff)) / max_)
-            #     fitness_after += fitness
-            # fitness_after /= len(sensor_log[0])
-            #
-            # return fitness_after
-
-            Sl = sensor_log[0]
-            Sr = sensor_log[1]
-            wheel_log = np.transpose(wheel_log1)
-
-            # sum = 0
-            # for idx in range(1, len(Sl)):
-            #     sum += (Sl[idx] + Sr[idx] )/2 - (mt.fabs(Sl[idx] - Sl[idx-1]) + mt.fabs(Sr[idx] - Sl[idx-1]))
-            #
-
-            # fit = 0
-            # for idx in range(1, len(Sl)):
-            #     if Sl[idx] > Sl[idx - 1] and Sr[idx] > Sr[idx - 1]:
-            #         fit += 1
-            #     elif Sl[idx] < Sl[idx - 1] or Sr[idx] < Sr[idx - 1]:
-            #         fit += -1.1
-            #     else:
-            #         fit += -1.2
-            # fitness = fit
-
-            fitness = 0
-            for i in range(1, len(Sl)):
-                vA = (wheel_log[0][i] + wheel_log[1][i])/2
-                diff = math.sqrt(abs(wheel_log[0][i] - wheel_log[1][i]))
-                self.difff.append(diff)
-                if sensor_log[0][i] > sensor_log[1][i]:
-                    smax = sensor_log[0][i]
-                    smax = smax * (smax / min(smax, sensor_log[0][i-1]))
-                else:
-                    smax = sensor_log[1][i]
-                    smax = smax * (smax / min(smax, sensor_log[1][i-1]))
-
-                self.smax.append(smax)
-                sA = (sensor_log[0][i] + sensor_log[1][i])/2
-                self.sav.append(sA)
-                fitness += (2 - (0.4 / min(0.4, diff))) * (2 - (max(1.5, diff)/1.5)) * (smax + sA**2)
-            fitness /= len(Sl)
-            fitness += (abs(sensor_log[0][-1] - sensor_log[0][0]) + abs(sensor_log[1][-1] - sensor_log[1][0]))/2
-
-            # print str(ind) + ' : ' + str(fitness)
+            # sim = Simulator()
+            # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+            # wheel_log1 = np.copy(wheel_log)
+            # vehicle.set_wheels(wheel_log)
+            # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+            fitness = np.mean(sensor_left) + np.mean(sensor_right)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -195,34 +179,34 @@ class GA:
                 return self.net.predict_noe(self.data, ind, self.look_ahead)
 
         else:  # this is for evolving real vehicles
-            print 'Running: ' + str(ind) + str(self._get_fitness(ind))
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
             vehicle.set_values(ind)
             # create Simulation
             vehicle = self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
             sensor_log = np.transpose([vehicle.sensor_left, vehicle.sensor_right])  # not tested
-            return sensor_log
+            wheel_log = []  # no need for these values, they are used in sleep for graphs
+            return sensor_log, wheel_log
 
-    def _start_ga(self, individuals, generations, crossover_rate, mutation_rate):
-        pool = self._get_all_fitnesses(_init_pool(individuals))
-        best_ind = [0, [0, 0, 0, 0, 0, 0], 0] # initialize an individual
+    def _start_ga(self, crossover_rate, mutation_rate):
+        pool = self._get_all_fitnesses(_init_pool(self.individuals))
+        best_ind = [0, [0, 0, 0, 0, 0, 0], 0]  # initialize an individual
         for ind in pool:
             if ind[2] > best_ind[2]:
                 best_ind = ind
         best_fit = [best_ind[2]]
-        for generation in range(0, individuals * generations):
+        for generation in range(0, self.individuals * self.generations):
             if (generation % 50) == 0:
-                print '\riter: ' + str(generation) + '/' + str(individuals * generations),
+                print '\riter: ' + str(generation) + '/' + str(self.individuals * self.generations),
                 fits = [ind[2] for ind in pool]
                 self.mean_fit.append(np.mean(fits))
                 self.max_fit.append(max(fits))
                 self.min_fit.append(min(fits))
 
             # find 2 random individuals
-            rand_ind1 = random.randint(0, individuals - 1)
-            rand_ind2 = random.randint(0, individuals - 1)
+            rand_ind1 = random.randint(0, self.individuals - 1)
+            rand_ind2 = random.randint(0, self.individuals - 1)
             if rand_ind1 == rand_ind2:
-                rand_ind2 = random.randint(0, individuals - 1)
+                rand_ind2 = random.randint(0, self.individuals - 1)
             # compare fitnesses
             ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
 
@@ -244,49 +228,17 @@ class GA:
             else:
                 best_fit.append(best_ind[2])
 
-        print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (individuals * generations, best_fit[-1], best_ind[1])
+        print '\rFinished GA: %s iter, best fit: %d, brain: %s' % (self.individuals * self.generations, best_fit[-1],
+                                                                   best_ind[1])
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
-        plt.figure(1)
-        if self.genome_length == 4:
-            brain = '[%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
-                                       format(best_ind[1][2], '.2f'),format(best_ind[1][3], '.2f'))
-        else:
-            brain = '[%s,%s,%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),
-                                             format(best_ind[1][2], '.2f'), format(best_ind[1][3], '.2f'),
-                                             format(best_ind[1][4], '.2f'), format(best_ind[1][5], '.2f'))
-        plt.suptitle('Finished GA of %d individuals and %d generations, with fitness %s of brain: %s' % (
-            individuals, generations, format(best_ind[2], '.3f'), brain))
-        plt.subplot(221)
-        plt.title('Graph of best fitness by generation')
-        plt.xlabel('iterations')
-        plt.ylabel('max fitness')
-        plt.plot(range(0, len(best_fit)), best_fit)
-
-        plt.subplot(222)
-        plt.title('Individual fitness over time')
-        plt.xlabel('iterations')
-        plt.ylabel('fitness of individuals')
-        i = range(0, individuals * generations, 50)
-        plt.scatter(i, self.max_fit, s=4, label='max')
-        plt.scatter(i, self.mean_fit, s=6, label='mean')
-        plt.scatter(i, self.min_fit, s=4, label='min')
-        plt.legend()
-
-        plt.subplot(223)
-        plt.title('Sensor avg')
-        plt.plot(range(0, len(self.sav)), self.sav)
-
-        plt.subplot(224)
-        plt.title('Max diff')
-        plt.plot(range(0, len(self.difff)), self.difff)
-
-        plt.show()
+        if self.graphics:
+            self.show_fitness_graph(best_ind, best_fit)
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
-    def run_offline(self, narx, data, look_ahead, use_narx, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None,
-                    individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.2):
+    def run_offline(self, narx, data, look_ahead, use_narx, veh_pos=None, veh_angle=random.randint(0, 360),
+                    light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
@@ -309,17 +261,26 @@ class GA:
         # self.offline = True
 
         print '\nStarting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
-        return self._start_ga(individuals, generations, crossover_rate, mutation_rate)
+        return self._start_ga(crossover_rate, mutation_rate)
 
-    def run(self, veh_pos, veh_angle, light_pos, individuals=25, generations=8, crossover_rate=0.7, mutation_rate=0.3):
+    def run(self, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None, individuals=30, generations=20,
+            iterations=None, crossover_rate=0.6, mutation_rate=0.3):
+        if veh_pos is None:
+            veh_pos = [random.randint(0, 1800), random.randint(0, 1000)]
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
-        self.light = Light(light_pos)
+        if light_pos is None:
+            self.light = Light([1100, 600])
+        self.individuals = individuals
+        self.generations = generations
+        if iterations is None:
+            start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
+            print 'vehicle available frames: ' + str(start_light_dist)
+            self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames
+        else:
+            self.iterations = iterations
         self.offline = False
 
-        start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
-        print 'vehicle available frames: ' + str(start_light_dist)
-        self.iterations = int(start_light_dist / 4)  # Halved number to limit num of frames and tested with a big dist
-
-        self._start_ga(individuals, generations, crossover_rate, mutation_rate)
+        print '\nStarting GA: individuals=%d generations=%d iterations=%d' % (individuals, generations, iterations)
+        return self._start_ga(crossover_rate, mutation_rate)
