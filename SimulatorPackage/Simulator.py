@@ -81,7 +81,7 @@ class Simulator:
         for t in range(1, iteration + 1):
             clock.tick()
 
-            all_sprites.update(t, self.light)
+            all_sprites.update(t, self.light)  # calls update() in Sprites
 
             if graphics:
                 screen.blit(background, (0, 0))
@@ -139,12 +139,13 @@ class Simulator:
     def quick_simulation(self, iteration, graphics=False, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
                          light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation then closes then window """
+        self.light = Light(light_pos)
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
-        self.light = Light(light_pos)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed, self.light)
+
         vehicle = self.run_simulation(iteration, graphics, vehicle)
         self.close()
         return vehicle
@@ -152,11 +153,12 @@ class Simulator:
     def init_simulation(self, iteration, graphics, cycle='', veh_pos=[300, 300], veh_angle=random.randint(0, 360),
                         light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
+        self.light = Light(light_pos)
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
-        self.light = Light(light_pos)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed, self.light)
+
         vehicle = self.run_simulation(iteration, graphics, vehicle, cycle=cycle)
         return vehicle

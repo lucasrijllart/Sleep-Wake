@@ -120,7 +120,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
     radius = 25  # radius of vehicle size
 
-    def __init__(self, start_pos, start_angle, gamma, seed):
+    def __init__(self, start_pos, start_angle, gamma, seed, light):
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -142,8 +142,10 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
         self.sensor_right = []
-        self.motor_left = []
-        self.motor_right = []
+        self.motor_left = [0]
+        self.motor_right = [0]
+
+        get_sensors(v=self, time=0, light_pos=light.pos)
 
     def update(self, t, light):
         # update position

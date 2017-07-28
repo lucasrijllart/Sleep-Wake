@@ -195,6 +195,7 @@ class Cycles:
                 # loop back to 1 until reached timestep
 
         else:  # vehicle does not have a brain, just random movement
+
             sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after, use_narx)
 
             brain = 'random'
@@ -213,10 +214,14 @@ class Cycles:
             i2 = np.array(range(predict_after, testing_time))
             plt.subplot(221)
             plt.title('Left sensor values')
-            plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
+            sensor_l = vehicle.sensor_left  # remove the initial condition (0 0 motor) to compare with predicted
+            sensor_l.pop(0)
+            plt.plot(i, sensor_l, 'b', i2, sensor_log[0], 'r')
 
             plt.subplot(222)
             plt.title('Right sensor values')
+            sensor_r = vehicle.sensor_right  # same as above
+            sensor_r.pop(0)
             plt.plot(i, vehicle.sensor_right, 'b', label='real')
             plt.plot(i2, sensor_log[1], 'r', label='predicted')
             plt.legend()
@@ -339,7 +344,7 @@ class Cycles:
         plt.plot(v_iter,  mser)
         plt.show()
 
-    def wake_testing(self, iterations, benchmark):
+    def wake_testing(self, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)

@@ -158,8 +158,13 @@ class PyrennNarx:
         sensor_log = np.array([[], []]) #return that
         wheel_log = [] # return that
 
-        next_input = np.array(data[:, -1])
-        next_input = np.array([[x] for x in next_input])
+        if data.size == 0:
+            data = np.zeros((4, self.delay))
+            next_input = data[:, -1]
+            next_input = np.array([[x] for x in next_input])
+        else:
+            next_input = np.array(data[:, -1])
+            next_input = np.array([[x] for x in next_input])
 
         self.set_past_data(data[:, :-1]) #set the past data
         # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
@@ -196,13 +201,19 @@ class PyrennNarx:
 
     def predict_error_graph(self, data, look_ahead, predict_after, narx):
         if narx:
+            past_data = data[:, :predict_after]
             sensor_log = np.array([[], []])  # return that
             wheel_log = []  # return that
 
-            next_input = np.array(data[:, -1])
+            padding = self.delay - past_data.shape[1]
+            if padding > 0:
+                padding = np.zeros((4, padding), dtype=float)
+                past_data = np.concatenate((padding, past_data), axis=1)
+
+            next_input = np.array(past_data[:, -1])
             next_input = np.array([[x] for x in next_input])
 
-            self.set_past_data(data[:, :-1])  # set the past data
+            self.set_past_data(past_data[:, :-1])  # set the past data
             # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
             # 1. predict next sensory output
             prediction = self.predict(next_input)
