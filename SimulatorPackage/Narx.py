@@ -1,6 +1,6 @@
 import pyrenn as pr
 import numpy as np
-from Genetic import run_through_brain
+from Sprites import run_through_brain
 # from sklearn.neural_network import MLPRegressor
 
 def load_net(filename='narxNet'):

@@ -69,33 +69,42 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
     return pre_process_by_vehicle(data)
 
 
-def random_brain_benchmark(random_brains=1000, iterations=100, start_pos=None, light=None, graphics=False):
+def random_brain_benchmark(random_brains=1000, iterations=100, start_pos=None, start_a=random.randint(0, 360),
+                           light=None, graphics=False, actual=None):
     """ Shows a graph of the fitness of a number of random brains """
     print '\nStarting benchmark test for %d random brains' % random_brains
     if start_pos is None:
         start_pos = [random.randint(0, Simulator.window_width), random.randint(0, Simulator.window_height)]
     if light is None:
         light = Light([1100, 600])
-    start_a = random.randint(0, 360)
     fitnesses = []
+
     start_time = time.time()
     for individual in range(0, random_brains):
         brain = Genetic.make_random_brain()
         fitnesses.append(Genetic.get_fitness(start_pos, start_a, brain, iterations, light))
     print 'Collected %d random brains in %ds' % (random_brains, time.time()-start_time)
+    random_mean_fit = np.mean(fitnesses)
 
     ga = GA(graphics=graphics)
     brain = ga.run(start_pos, start_a, light, iterations=iterations)
     brain = brain[0]
-    brain = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
+    evol_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
+    fitnesses.append(evol_score)
+
+    if actual is not None:
+        brain = actual.get_brain()
+        pred_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
+        fitnesses.append(pred_score)
 
     plt.title('Benchmark test for random vehicle fitness')
-    random_mean_fit = np.mean(fitnesses)
-    fitnesses.append(brain)
+
     fitnesses.sort()
-    brain_idx = np.where(fitnesses == brain)
-    plt.scatter(range(0, len(fitnesses)), fitnesses, s=3, c='grey', label='random')
-    plt.scatter(brain_idx, brain, s=8, c='red', label='evolved')
+    evol_idx = np.where(fitnesses == evol_score)
+    pred_idx = np.where(fitnesses == pred_score)
+    plt.scatter(range(0, len(fitnesses)), fitnesses, s=1, c='grey', label='random')
+    plt.scatter(evol_idx, evol_score, s=15, c='green', label='evolved')
+    plt.scatter(pred_idx, pred_score, s=20, c='red', label='predicted')
     plt.plot([0, len(fitnesses)], [random_mean_fit, random_mean_fit], c='blue', label='random mean')
     plt.xlabel('individuals')
     plt.ylabel('fitness')
@@ -266,7 +275,7 @@ class Cycles:
 
     def sleep(self, look_ahead=100, individuals=25, generations=10, use_narx=True):
         # run GA and find best brain to give to testing
-        ga = GA()
+        ga = GA(graphics=True)
         ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead, use_narx, veh_pos=self.random_vehicle.pos[-1],
                                    veh_angle=self.random_vehicle.angle, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
@@ -320,7 +329,7 @@ class Cycles:
         plt.plot(v_iter,  mser)
         plt.show()
 
-    def wake_testing(self, iterations):
+    def wake_testing(self, iterations, benchmark):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
@@ -355,3 +364,7 @@ class Cycles:
         plt.plot(range(0, len(mse)), mse)
 
         plt.show()
+
+        if benchmark:
+            random_brain_benchmark(random_brains=10000, iterations=iterations, start_pos=self.random_vehicle.pos[-1],
+                                   start_a=self.random_vehicle.angle, light=self.sim.light, actual=actual_vehicle)

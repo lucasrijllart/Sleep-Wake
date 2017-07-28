@@ -30,17 +30,6 @@ def _init_pool(individuals):
     return pool
 
 
-def run_through_brain(prediction, ind):
-    """ Gets wheel data by passing predictions through brain """
-    if len(ind) == 6:
-        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                            (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-    else:
-        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]),
-                            (prediction[1] * ind[2]) + (prediction[0] * ind[1])]
-    return [wheel_l[0], wheel_r[0]]
-
-
 class GA:
 
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
@@ -48,17 +37,8 @@ class GA:
 
     sim = Simulator()
 
-    # To check the values (can be removed when GA works)
-    mean_fit = []
-    max_fit = []
-    min_fit = []
-    smax = []
-    sav = []
-    difff = []
-
-    def __init__(self, graphics=True):
+    def __init__(self, graphics=False):
         self.graphics = graphics
-
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
         self.light = None
@@ -71,6 +51,14 @@ class GA:
         self.look_ahead = None
         self.offline = None
         self.use_narx = None
+
+        # To check the values (can be removed when GA works)
+        self.mean_fit = []
+        self.max_fit = []
+        self.min_fit = []
+        self.smax = []
+        self.sav = []
+        self.difff = []
 
     def show_fitness_graph(self, best_ind, best_fit):
         plt.figure(1)
@@ -254,13 +242,15 @@ class GA:
         self.start_a = veh_angle
         self.light = Light(light_pos)
         self.offline = True
+        self.individuals = individuals
+        self.generations = generations
 
         # Uncomment this to run GA with simulation
         # print 'Starting GA with simulation'
         # self.run(veh_pos, veh_angle, light_pos)
         # self.offline = True
 
-        print '\nStarting GA: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
+        print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
         return self._start_ga(crossover_rate, mutation_rate)
 
     def run(self, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None, individuals=30, generations=20,
@@ -282,5 +272,5 @@ class GA:
             self.iterations = iterations
         self.offline = False
 
-        print '\nStarting GA: individuals=%d generations=%d iterations=%d' % (individuals, generations, iterations)
+        print '\nStarting GA with world: individuals=%d generations=%d iterations=%d' % (individuals, generations, iterations)
         return self._start_ga(crossover_rate, mutation_rate)

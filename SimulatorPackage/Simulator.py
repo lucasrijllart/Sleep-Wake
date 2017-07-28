@@ -158,5 +158,5 @@ class Simulator:
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed)
         self.light = Light(light_pos)
-        vehicle = self.run_simulation(iteration, graphics, vehicle, cycle)
+        vehicle = self.run_simulation(iteration, graphics, vehicle, cycle=cycle)
         return vehicle
