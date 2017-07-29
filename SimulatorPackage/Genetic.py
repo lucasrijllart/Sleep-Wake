@@ -51,7 +51,6 @@ class GA:
         self.data = None
         self.look_ahead = None
         self.offline = None
-        self.use_narx = None
 
         # To check the values (can be removed when GA works)
         self.mean_fit = []
@@ -132,10 +131,8 @@ class GA:
         if self.offline is False:
             return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
-            if self.use_narx:  # if we use NARX
-                sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
-            else:  # if we use NOE
-                sensor_log, wheel_log = self.net.predict_noe(self.data, brain, self.look_ahead)
+            sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
+
             sensor_left = sensor_log[0]
             sensor_right = sensor_log[1]
 
@@ -162,10 +159,7 @@ class GA:
 
     def _run_winner(self, graphics, ind):
         if self.offline:  # offline means in sleep cycle
-            if self.use_narx:  # if we use the NARX network
-                return self.net.predict_ahead(self.data, ind, self.look_ahead)
-            else:  # if we use the NOE network
-                return self.net.predict_noe(self.data, ind, self.look_ahead)
+            return self.net.predict_ahead(self.data, ind, self.look_ahead)
 
         else:  # this is for evolving real vehicles
             vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a, self.light)
@@ -226,7 +220,7 @@ class GA:
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
-    def run_offline(self, narx, data, look_ahead, use_narx, veh_pos=None, veh_angle=random.randint(0, 360),
+    def run_offline(self, narx, data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
                     light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
@@ -237,7 +231,6 @@ class GA:
         self.net = narx
         self.data = data
         self.look_ahead = look_ahead
-        self.use_narx = use_narx
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle

@@ -140,7 +140,7 @@ class Cycles:
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2, use_narx=True):
+    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -171,7 +171,7 @@ class Cycles:
            pass
         else:  # vehicle does not have a brain, just random movement
 
-            sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after, use_narx)
+            sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after)
 
             brain = 'random'
 
@@ -269,7 +269,7 @@ class Cycles:
         self.ga_generations = generations
         # run GA and find best brain to give to testing
         ga = GA(self.light, graphics=True)
-        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead, use_narx,
+        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead,
                                    veh_pos=self.random_vehicle.pos[-1],
                                    veh_angle=self.random_vehicle.angle, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
