@@ -7,7 +7,8 @@ import numpy as np
 dt = 2
 
 
-def get_sensors(v, time, light_pos):
+def get_sensors(v, time):
+    light_pos = v.light.pos
     # calculate left sensor position
     sl0 = (v.pos[time][0] - math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
     sl1 = (v.pos[time][1] + math.sin(v.bearing[time]) * v.radius) - math.cos(v.bearing[time]) * v.radius
@@ -59,7 +60,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
     radius = 25  # radius of vehicle size
 
-    def __init__(self, start_pos, start_angle):
+    def __init__(self, start_pos, start_angle, light):
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -68,12 +69,6 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.angle = start_angle  # starting angle
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
-        # vehicle sensory and motor information to extract for neural network
-        self.sensor_left = []
-        self.sensor_right = []
-        self.motor_left = []
-        self.motor_right = []
-
         # vehicle logic init
         self.dt = dt
         self.wheel_l, self.wheel_r = 0, 0
@@ -81,10 +76,18 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.random_movement = []
+        self.light = light
 
         # weights sensor->motor (lr = left sensor to right wheel)
         self.w_ll, self.w_lr, self.w_rr, self.w_rl = 0, 0, 0, 0
         self.bias_l, self.bias_r = 0, 0
+
+        # vehicle sensory and motor information to extract for neural network
+        self.sensor_left = []
+        self.sensor_right = []
+        self.motor_left = [0.0]
+        self.motor_right = [0.0]
+        get_sensors(self, 0)
 
     def set_wheels(self, wheel_data):
         self.wheel_data = np.copy(wheel_data).tolist()
@@ -97,12 +100,12 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.bias_l = bl
         self.bias_r = br
 
-    def update(self, t, light):
+    def update(self, t):
         # update position
         update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t, light.pos)
+        get_sensors(self, t)
 
         # get motor intensity
         wheel_l, wheel_r = self.wheel_data.pop(0)
@@ -130,6 +133,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.image = pygame.transform.rotozoom(self.original, self.angle, 0.5)
 
         # vehicle logic init
+        self.light = light
         self.gamma = gamma
         if seed is not None:
             random.seed(seed)
@@ -142,17 +146,16 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
         self.sensor_right = []
-        self.motor_left = [0]
-        self.motor_right = [0]
+        self.motor_left = [0.0]
+        self.motor_right = [0.0]
+        get_sensors(v=self, time=0)
 
-        get_sensors(v=self, time=0, light_pos=light.pos)
-
-    def update(self, t, light):
+    def update(self, t):
         # update position
         update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t, light.pos)
+        get_sensors(self, t)
 
         # calculate motor intensity
         self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(2, 4)) + 0.5,
@@ -172,7 +175,7 @@ class BrainVehicle(pygame.sprite.Sprite):
     # Brain constant
     bias_constant = 10
 
-    def __init__(self, start_pos, start_angle):
+    def __init__(self, start_pos, start_angle, light):
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -191,12 +194,14 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.bias_l, self.bias_r = None, None  # automatically added wheel bias to wheels
         self.random_movement = []  # keeps track of the movement before the brain
         self.predicted_movement = []  # keeps track of the predicted movement by the GA
+        self.light = light
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
         self.sensor_right = []
-        self.motor_left = []
-        self.motor_right = []
+        self.motor_left = [0.0]
+        self.motor_right = [0.0]
+        get_sensors(self, 0)
 
     def set_values(self, ll_lr_rr_rl_bl_br):
         if len(ll_lr_rr_rl_bl_br) >= 4:
@@ -214,12 +219,12 @@ class BrainVehicle(pygame.sprite.Sprite):
         else:
             return [self.w_ll, self.w_lr, self.w_rr, self.w_rl, self.bias_l, self.bias_r]
 
-    def update(self, t, light):
+    def update(self, t):
         # update vehicle
         update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t, light.pos)
+        get_sensors(self, t)
         sensor_l = self.sensor_left[-1]
         sensor_r = self.sensor_right[-1]
 

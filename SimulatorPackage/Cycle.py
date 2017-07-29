@@ -37,7 +37,7 @@ def pre_process_by_vehicle(raw_data):
     return [new_inputs, new_targets]
 
 
-def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000,
+def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=10, iterations=1000,
                         graphics=False, gamma=0.3, seed=None):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
     random_brains = 0  # maybe pass this into the method at some point
@@ -47,11 +47,9 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
         vehicle_angle = 200
     else:
         vehicle_angle = random.randint(0, 360)
-    if light_pos is None:
-        light_pos = [1100, 600]
 
     data = []
-    sim = Simulator()
+    sim = Simulator(light)
     for run in range(0, runs):
         if vehicle_angle_rand:  # update angle for each vehicle
             vehicle_angle = random.randint(0, 360)
@@ -60,7 +58,7 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
             brain = Genetic.make_random_brain()
             random_brains += 1
         # add 1 because the simulation returns iterations-1 as the first timestep is the starting pos (not recorded)
-        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, light_pos, gamma, seed, brain=brain)
+        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, seed, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -69,25 +67,24 @@ def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=Non
     return pre_process_by_vehicle(data)
 
 
-def random_brain_benchmark(actual, random_brains=1000, iterations=100, start_pos=None, start_a=random.randint(0, 360),
-                           light=None, graphics=False, ga_individuals=30, ga_generations=20):
+def random_brain_benchmark(actual, light, random_brains=1000, iterations=100, start_pos=None, start_a=random.randint(0, 360),
+                           graphics=False, ga_individuals=30, ga_generations=20):
     """ Shows a graph of the fitness of a number of random brains """
-    print '\nStarting benchmark test for %d random brains' % random_brains
+    print '\nStarting benchmark test for %d random brains...' % random_brains
     if start_pos is None:
         start_pos = [random.randint(0, Simulator.window_width), random.randint(0, Simulator.window_height)]
-    if light is None:
-        light = Light([1100, 600])
     fitnesses = []
 
     start_time = time.time()
     for individual in range(0, random_brains):
         brain = Genetic.make_random_brain()
         fitnesses.append(Genetic.get_fitness(start_pos, start_a, brain, iterations, light))
-    print 'Collected %d random brains in %ds' % (random_brains, time.time()-start_time)
+    print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
     random_mean_fit = np.mean(fitnesses)
 
-    ga = GA(graphics=graphics)
-    brain = ga.run(start_pos, start_a, light, iterations=iterations, individuals=ga_individuals, generations=ga_generations)
+    ga = GA(light, graphics)
+    brain = ga.run(start_pos, start_a, iterations=iterations, individuals=ga_individuals,
+                   generations=ga_generations)
     brain = brain[0]
     evol_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
     fitnesses.append(evol_score)
@@ -110,10 +107,12 @@ def random_brain_benchmark(actual, random_brains=1000, iterations=100, start_pos
     plt.legend()
     plt.show()
 
+    return pred_score > random_mean_fit  # return whether the predicted brain fitness is better than chance
+
 
 class Cycles:
 
-    def __init__(self, type=None, net_filename=None):
+    def __init__(self, type=None, net_filename=None, light_pos=None):
 
         self.net = None  # NARX network
         self.net_filename = net_filename
@@ -124,7 +123,7 @@ class Cycles:
             saved_net = narx.load_pyrenn(net_filename)
             self.net = PyrennNarx()
             self.net.set_net(saved_net)
-            print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time()-start_time)
+            print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time() - start_time)
 
         self.random_vehicle = None
         self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain assigned after GA, 6 weights
@@ -135,6 +134,9 @@ class Cycles:
         self.ga_generations = None
 
         self.sim = None
+        if light_pos is None:
+            light_pos = [1100, 600]
+        self.light = Light(light_pos)
 
         self.count_cycles = 0
 
@@ -151,7 +153,7 @@ class Cycles:
             brain = [float(item) for item in brain]
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
-        sim = Simulator()
+        sim = Simulator(self.light)
         vehicle = sim.init_simulation(testing_time, True, veh_angle=200, brain=brain, gamma=gamma)
         sensor_motor = []
         for x in range(0, testing_time):
@@ -166,36 +168,7 @@ class Cycles:
 
         # check if vehicle has a brain, if not just pass it the data
         if brain is not None:
-            next_input = np.array(data[:, -1])
-            next_input = np.array([[x] for x in next_input])
-            # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
-            # 1. predict next sensory output
-            prediction = self.net.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-            # 2. log predicted sensory information to list (used for fitness)
-            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-            # 3. feed it to the brain to get motor information
-            wheel_l, wheel_r = [
-                (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant,
-                (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / BrainVehicle.bias_constant]
-            wheel_log.append([wheel_l[0], wheel_r[0]])
-            # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
-
-            for it in range(1, look_ahead):  # loop through the time steps
-                # 1. predict next sensory output
-                prediction = self.net.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-                # 2. log predicted sensory information to list (used for fitness)
-                sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-                # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [(prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant,
-                                    (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / BrainVehicle.bias_constant]
-                wheel_log.append([wheel_l[0], wheel_r[0]])
-                # 4. concatenate previous step to the full data
-                data = np.concatenate((data, next_input), axis=1)
-                # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_l, wheel_r, prediction[0], prediction[1]])
-                # loop back to 1 until reached timestep
-
+           pass
         else:  # vehicle does not have a brain, just random movement
 
             sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after, use_narx)
@@ -209,37 +182,36 @@ class Cycles:
             # get sensory information of vehicle and compare with predicted
             plt.figure(1)
             title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
-                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename, testing_time,
-                                                                                           predict_after, brain)
+                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (
+                    self.net_filename, testing_time,
+                    predict_after, brain)
             plt.suptitle(title)
             i = np.array(range(0, len(sensor_left)))
             i2 = np.array(range(predict_after, testing_time))
             plt.subplot(221)
             plt.title('Left sensor values')
-            sensor_l = vehicle.sensor_left  # remove the initial condition (0 0 motor) to compare with predicted
-            sensor_l.pop(0)
-            plt.plot(i, sensor_l, 'b', i2, sensor_log[0], 'r')
+            plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
 
             plt.subplot(222)
             plt.title('Right sensor values')
-            sensor_r = vehicle.sensor_right  # same as above
-            sensor_r.pop(0)
             plt.plot(i, vehicle.sensor_right, 'b', label='real')
             plt.plot(i2, sensor_log[1], 'r', label='predicted')
             plt.legend()
 
-            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in range(0, len(sensor_left))]
+            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in
+                    range(0, len(sensor_left))]
             plt.subplot(223)
             plt.title('MSE of left sensor')
             plt.plot(range(0, len(msel)), msel)
 
-            mser = [((sensor_right[i]-vehicle.sensor_right[i])**2) / len(sensor_right) for i in range(0, len(sensor_right))]
+            mser = [((sensor_right[i] - vehicle.sensor_right[i]) ** 2) / len(sensor_right) for i in
+                    range(0, len(sensor_right))]
             plt.subplot(224)
             plt.title('MSE of left sensor')
             plt.plot(range(0, len(mser)), mser)
             plt.show()
 
-    def train_network(self,api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
+    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
@@ -250,12 +222,14 @@ class Cycles:
         filename = new_filename
 
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(runs=learning_runs, iterations=learning_time,
+        train_input, train_target = collect_random_data(self.light, runs=learning_runs, iterations=learning_time,
                                                         graphics=False, gamma=gamma)
 
         # creation of network
-        print '\nNetwork training started at ' + str(time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
-        print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (learning_runs, learning_time, delay, max_epochs)
+        print '\nNetwork training started at ' + str(
+            time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
+        print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (
+        learning_runs, learning_time, delay, max_epochs)
 
         start_time = time.time()
         if api == 'pyrenn':
@@ -273,12 +247,12 @@ class Cycles:
         else:
             print 'Wrong network type given'
 
-        print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time()-start_time))
+        print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time() - start_time))
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
         # Create vehicle in simulation
-        self.sim = Simulator()
+        self.sim = Simulator(self.light)
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
                                                        veh_pos=[300, 300], veh_angle=200)
         vehicle_move = []
@@ -294,8 +268,9 @@ class Cycles:
         self.ga_individuals = individuals
         self.ga_generations = generations
         # run GA and find best brain to give to testing
-        ga = GA(graphics=True)
-        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead, use_narx, veh_pos=self.random_vehicle.pos[-1],
+        ga = GA(self.light, graphics=True)
+        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead, use_narx,
+                                   veh_pos=self.random_vehicle.pos[-1],
                                    veh_angle=self.random_vehicle.angle, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
         self.brain = ga_result[0]
@@ -303,7 +278,7 @@ class Cycles:
         predicted_wheels = ga_result[2]
 
         # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
-        ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
+        ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
         ga_prediction_vehicle.set_wheels(predicted_wheels)
         ga_prediction_vehicle.random_movement = self.random_vehicle.pos
         ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels), graphics=True, cycle='sleep',
@@ -345,13 +320,13 @@ class Cycles:
         plt.ylabel('mean squared error')
         mser = [((predicted_sensors[1][it] - ga_prediction_vehicle.sensor_right[it]) ** 2) / len(v_iter) for it in
                 range(0, len(v_iter))]
-        plt.plot(v_iter,  mser)
+        plt.plot(v_iter, mser)
         plt.show()
 
     def wake_testing(self, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
-        new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle)
+        new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
         new_vehicle.set_values(self.brain)
         new_vehicle.random_movement = self.random_vehicle.pos
         new_vehicle.predicted_movement = self.predicted_pos
@@ -378,13 +353,15 @@ class Cycles:
         plt.title('Movement prediction error')
         plt.xlabel('iterations')
         plt.ylabel('mean squared error')
-        mse = [(((pred_move[0][it] - actual_move[0][it] + pred_move[1][it] - actual_move[1][it])/2) ** 2) /
+        mse = [(((pred_move[0][it] - actual_move[0][it] + pred_move[1][it] - actual_move[1][it]) / 2) ** 2) /
                len(pred_move[0]) for it in range(0, len(pred_move[0]))]
         plt.plot(range(0, len(mse)), mse)
 
         plt.show()
 
         if benchmark:
-            random_brain_benchmark(actual_vehicle, random_brains=1000, iterations=iterations,
-                                   start_pos=self.random_vehicle.pos[-1], start_a=self.random_vehicle.angle, light=self.sim.light,
-                                   ga_individuals=self.ga_individuals, ga_generations=self.ga_generations)
+            passed_test = random_brain_benchmark(actual_vehicle, random_brains=1000, iterations=iterations,
+                                                 start_pos=self.random_vehicle.pos[-1],
+                                                 start_a=self.random_vehicle.angle, light=self.sim.light,
+                                                 ga_individuals=self.ga_individuals, ga_generations=self.ga_generations)
+            print 'Predicted vehicle passed test: ' + str(passed_test)

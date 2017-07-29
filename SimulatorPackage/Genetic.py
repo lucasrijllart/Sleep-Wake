@@ -1,5 +1,5 @@
 from Simulator import Simulator
-from Sprites import BrainVehicle, ControllableVehicle, Light
+from Sprites import BrainVehicle, Light
 import numpy as np
 import random
 import math
@@ -12,10 +12,10 @@ def make_random_brain():
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
     # create sprites
-    vehicle = BrainVehicle(start_pos, start_a)
+    vehicle = BrainVehicle(start_pos, start_a, light)
     vehicle.set_values(brain)
     # create Simulation
-    vehicle = GA.sim.run_simulation(iterations, False, vehicle, light)
+    vehicle = Simulator(light).run_simulation(iterations, False, vehicle)
     sensor_left = vehicle.sensor_left
     sensor_right = vehicle.sensor_right
     fitness = np.mean(sensor_left) + np.mean(sensor_right)
@@ -35,13 +35,14 @@ class GA:
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
 
-    sim = Simulator()
+    sim = None
 
-    def __init__(self, graphics=False):
+    def __init__(self, light, graphics=False):
         self.graphics = graphics
+        self.light = light
+        self.sim = Simulator(self.light)
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
-        self.light = None
         self.iterations = None
         self.individuals = None
         self.generations = None
@@ -167,10 +168,10 @@ class GA:
                 return self.net.predict_noe(self.data, ind, self.look_ahead)
 
         else:  # this is for evolving real vehicles
-            vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a)
+            vehicle = BrainVehicle([self.start_x, self.start_y], self.start_a, self.light)
             vehicle.set_values(ind)
             # create Simulation
-            vehicle = self.sim.run_simulation(self.iterations, graphics, vehicle, self.light)
+            vehicle = self.sim.run_simulation(self.iterations, graphics, vehicle)
             sensor_log = np.transpose([vehicle.sensor_left, vehicle.sensor_right])  # not tested
             wheel_log = []  # no need for these values, they are used in sleep for graphs
             return sensor_log, wheel_log
@@ -250,27 +251,25 @@ class GA:
         # self.run(veh_pos, veh_angle, light_pos)
         # self.offline = True
 
-        print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s' % (individuals, generations, look_ahead)
+        print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals, generations, look_ahead)
         return self._start_ga(crossover_rate, mutation_rate)
 
-    def run(self, veh_pos=None, veh_angle=random.randint(0, 360), light_pos=None, individuals=30, generations=20,
+    def run(self, veh_pos=None, veh_angle=random.randint(0, 360), individuals=30, generations=20,
             iterations=None, crossover_rate=0.6, mutation_rate=0.3):
         if veh_pos is None:
             veh_pos = [random.randint(0, 1800), random.randint(0, 1000)]
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]
         self.start_a = veh_angle
-        if light_pos is None:
-            self.light = Light([1100, 600])
         self.individuals = individuals
         self.generations = generations
         if iterations is None:
-            start_light_dist = math.sqrt((light_pos[0] - self.start_x) ** 2 + (light_pos[1] - self.start_y) ** 2)
+            start_light_dist = math.sqrt((self.light.pos[0] - self.start_x) ** 2 + (self.light.pos[1] - self.start_y) ** 2)
             print 'vehicle available frames: ' + str(start_light_dist)
             self.iterations = int(start_light_dist / 2)  # Halved number to limit num of frames
         else:
             self.iterations = iterations
         self.offline = False
 
-        print '\nStarting GA with world: individuals=%d generations=%d iterations=%d' % (individuals, generations, iterations)
+        print '\nStarting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations, iterations)
         return self._start_ga(crossover_rate, mutation_rate)
