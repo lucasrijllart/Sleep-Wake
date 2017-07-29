@@ -113,13 +113,15 @@ def random_brain_benchmark(actual, random_brains=1000, iterations=100, start_pos
 
 class Cycles:
 
-    def __init__(self, net_filename=None):
+    def __init__(self, type=None, net_filename=None):
 
         self.net = None  # NARX network
         self.net_filename = net_filename
+        if type == 'skmlp':
+            self.net = narx.load_narx_mlp(net_filename)
         if net_filename is not None:
             start_time = time.time()
-            saved_net = narx.load_net(net_filename)
+            saved_net = narx.load_pyrenn(net_filename)
             self.net = PyrennNarx()
             self.net.set_net(saved_net)
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time()-start_time)
@@ -158,7 +160,7 @@ class Cycles:
         sensor_motor = np.transpose(np.array(sensor_motor))
         # print sensor_motor.shape
 
-        data = np.array(sensor_motor[:, predict_after:])  # data up until the initial run time
+        data = sensor_motor  # data up until the initial run time
         sensor_log = np.array([[], []])
         wheel_log = []
 
@@ -266,6 +268,8 @@ class Cycles:
             self.net = NarxMLP()
 
             self.net.fit(train_input, delay, use_mean)
+
+            self.net.to_file(filename)
         else:
             print 'Wrong network type given'
 

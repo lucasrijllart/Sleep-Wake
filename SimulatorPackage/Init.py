@@ -1,4 +1,3 @@
-import Cycle as Cycle
 from Cycle import Cycles
 
 # Train Network
@@ -7,7 +6,7 @@ learning_time = 100
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 10
 max_epochs = 300
-type_of_net = 'skmlp'
+type_of_net = None #'skmlp'
 
 # Error graph
 testing_time = 100  # has to me predict_after + delays + 1
@@ -26,15 +25,15 @@ wake_test_iter = 150
 
 use_narx = True
 # Booleans for running
-train_network = True
-error_graph = False
+train_network = False
+error_graph = True
 
 run_cycles = False
 benchmark = False
 
 # Functions
 if not train_network:
-    cycle = Cycles(net_filename='narx/r100t150d20e100')
+    cycle = Cycles(net_filename='narx/r100t150d20e100', type=type_of_net)
 else:
     cycle = Cycles()
 

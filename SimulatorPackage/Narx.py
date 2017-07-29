@@ -2,9 +2,15 @@ import pyrenn as pr
 import numpy as np
 from Sprites import run_through_brain
 from sklearn.neural_network import MLPRegressor
+import pickle
 
-def load_net(filename='narxNet'):
+
+def load_pyrenn(filename='narxNet'):
     return pr.loadNN(filename)
+
+
+def load_narx_mlp(filename):
+    return pickle.load(open(filename, 'rb'))
 
 
 class PyrennNarx:
@@ -144,8 +150,6 @@ class PyrennNarx:
                 delayed_input.append(x[idx, 0])
                 delay_data = self.past_data[idx, -(self.delay-1):]
                 delayed_input.extend(delay_data[::-1])
-                # for idx_2 in range(0, self.delay):
-                #     delayed_input.append(self.past_data[idx, -idx_2])
             delayed_input = np.array(delayed_input)
             delayed_input = np.reshape(delayed_input, (self.layers[0], 1))
             y = pr.NNOut(delayed_input, self.net)
@@ -201,10 +205,13 @@ class PyrennNarx:
 
     def predict_error_graph(self, data, look_ahead, predict_after, narx):
         if narx:
-            past_data = data[:, :predict_after]
+            # determine the past data
+            past_data = np.array(data[:, :predict_after])
+            # intialize the arrays for the logs
             sensor_log = np.array([[], []])  # return that
             wheel_log = []  # return that
 
+            # If no previous observations. Add zro padding
             padding = self.delay - past_data.shape[1]
             if padding > 0:
                 padding = np.zeros((4, padding), dtype=float)
@@ -227,7 +234,7 @@ class PyrennNarx:
             wheel_log.append([wheel_l, wheel_r])
 
             # 4. add this set of data to the input of the prediction
-            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
+            next_input = np.array([[wheel_l], [wheel_r], prediction[0], prediction[1]]).reshape(4, 1)
 
             for it in range(1, look_ahead):  # loop through the time steps
                 # 1. predict next sensory output
@@ -237,13 +244,13 @@ class PyrennNarx:
                 sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
                 # 3. feed it to the brain to get motor information
-                wheel_l, wheel_r = [data[0, predict_after], data[1, predict_after]]
+                wheel_l, wheel_r = [data[0, predict_after+it], data[1, predict_after+it]]
                 wheel_log.append([wheel_l, wheel_r])
                 # 4. append previous step to the full data
                 self.update_past_data(next_input)
 
                 # 5. set the predicted data to the next input of the prediction
-                next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
+                next_input = np.array([[wheel_l], [wheel_r], prediction[0], prediction[1]]).reshape(4, 1)
                 # loop back to 1 until reached time-step
             return sensor_log, wheel_log
         else:
@@ -297,6 +304,10 @@ class NarxMLP:
     def fit(self, train_data, delay, use_mean):
         x, t = prepare_data(train_data, delay, use_mean)
         return self.net.fit(x, t)
+
+    def to_file(self, filename):
+        pickle.dump(self.net, open(filename, 'wb'))
+
 
 
 def prepare_data(data, delay, use_mean):
