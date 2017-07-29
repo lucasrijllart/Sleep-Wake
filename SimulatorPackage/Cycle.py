@@ -163,8 +163,6 @@ class Cycles:
         # print sensor_motor.shape
 
         data = sensor_motor  # data up until the initial run time
-        sensor_log = np.array([[], []])
-        wheel_log = []
 
         # check if vehicle has a brain, if not just pass it the data
         if brain is not None:
@@ -255,8 +253,9 @@ class Cycles:
         self.sim = Simulator(self.light)
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
                                                        veh_pos=[300, 300], veh_angle=200)
-        vehicle_move = []
-        for t in range(0, random_movements):
+        vehicle_move = [[self.random_vehicle.motor_left[0], self.random_vehicle.motor_right[0],
+                         self.random_vehicle.sensor_left[0], self.random_vehicle.sensor_right[0]]]
+        for t in range(1, random_movements):
             vehicle_move.append([self.random_vehicle.motor_left[t], self.random_vehicle.motor_right[t],
                                  self.random_vehicle.sensor_left[t], self.random_vehicle.sensor_right[t]])
         vehicle_first_move = []
@@ -264,7 +263,7 @@ class Cycles:
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
 
-    def sleep(self, look_ahead=100, individuals=25, generations=10, use_narx=True):
+    def sleep(self, look_ahead=100, individuals=25, generations=10):
         self.ga_individuals = individuals
         self.ga_generations = generations
         # run GA and find best brain to give to testing
@@ -363,5 +362,6 @@ class Cycles:
             passed_test = random_brain_benchmark(actual_vehicle, random_brains=1000, iterations=iterations,
                                                  start_pos=self.random_vehicle.pos[-1],
                                                  start_a=self.random_vehicle.angle, light=self.sim.light,
-                                                 ga_individuals=self.ga_individuals, ga_generations=self.ga_generations)
+                                                 ga_individuals=self.ga_individuals, ga_generations=self.ga_generations,
+                                                 graphics=True)
             print 'Predicted vehicle passed test: ' + str(passed_test)

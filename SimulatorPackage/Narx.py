@@ -159,18 +159,23 @@ class PyrennNarx:
         pr.saveNN(self.net, filename=filename)
 
     def predict_ahead(self, data, ind, look_ahead):
-        sensor_log = np.array([[], []]) #return that
-        wheel_log = [] # return that
+        sensor_log = np.array([[], []])  # return that
+        wheel_log = []  # return that
 
-        if data.size == 0:
-            data = np.zeros((4, self.delay))
-            next_input = data[:, -1]
-            next_input = np.array([[x] for x in next_input])
-        else:
-            next_input = np.array(data[:, -1])
-            next_input = np.array([[x] for x in next_input])
+        # If no previous observations. Add zero padding
+        padding = self.delay - data.shape[1]
+        if padding > 0:
+            padding = np.zeros((4, padding), dtype=float)
+            sensors = data[2:, 0]
+            padding[2, :] = sensors[0]
+            padding[3, :] = sensors[1]
+            data = np.concatenate((padding, data), axis=1)
 
-        self.set_past_data(data[:, :-1]) #set the past data
+
+        next_input = np.array(data[:, -1])
+        next_input = np.array([[x] for x in next_input])
+
+        self.set_past_data(data[:, :-1])  # set the past data
         # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
         # 1. predict next sensory output
         prediction = self.predict(next_input)

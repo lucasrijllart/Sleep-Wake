@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 
 def make_random_brain():
-    return [random.uniform(-GA.genome_scale, GA.genome_scale) for _ in range(0, GA.genome_length)]
+    # make this -GA.genome_scale, GA.genome_scale
+    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
@@ -106,8 +107,8 @@ class GA:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -self.genome_scale:
-                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
+                if ind[i] < -0:  # make it -self.genome_scale for wrapping around backwards movement
+                    ind[i] = self.genome_scale - (-0 - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
