@@ -102,32 +102,15 @@ class Simulator:
 
         return vehicle
 
-    def init_simulation_random(self, iteration, graphics, veh_rand_pos, veh_rand_angle):
-        if veh_rand_pos:  # check if vehicle positions are random
-            v1_x = random.randint(400, self.window_width - 400)  # was 25
-            v1_y = random.randint(100, self.window_height - 100)
-        else:
-            v1_x = 300
-            v1_y = 300
-
-        if veh_rand_angle:  # check if vehicle angle is random
-            v1_angle = random.randint(0, 360)
-        else:
-            v1_angle = 180
-
-
-        # create sprites
-        vehicle = BrainVehicle([v1_x, v1_y], v1_angle)
-
-        return self.run_simulation(iteration, graphics, vehicle)  # run simulation with given param
-
     @staticmethod
     def close():
         pygame.display.quit()
 
-    def quick_simulation(self, iteration, graphics=False, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
+    def quick_simulation(self, iteration, graphics=False, veh_pos=None, veh_angle=random.randint(0, 360),
                          gamma=0.3, brain=None, forward=True):
         """ Runs a simulation then closes then window """
+        if veh_pos is None:
+            veh_pos = [300, 300]
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
             vehicle.set_values(brain)
@@ -138,14 +121,16 @@ class Simulator:
         self.close()
         return vehicle
 
-    def init_simulation(self, iteration, graphics, cycle='', veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                        gamma=0.3, use_seed=None, brain=None):
+    def init_simulation(self, iteration, graphics, cycle='', veh_pos=None, veh_angle=random.randint(0, 360),
+                        gamma=0.3, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
+        if veh_pos is None:
+            veh_pos = [300, 300]
         if brain is not None:
-            vehicle = BrainVehicle(veh_pos, veh_angle)
+            vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed, self.light)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light)
 
         vehicle = self.run_simulation(iteration, graphics, vehicle, cycle=cycle)
         return vehicle

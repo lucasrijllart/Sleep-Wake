@@ -38,7 +38,7 @@ def pre_process_by_vehicle(raw_data):
 
 
 def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=10, iterations=1000,
-                        graphics=False, gamma=0.3, seed=None):
+                        graphics=False, gamma=0.3, seed=None, backward_chance=0):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
     random_brains = 0  # maybe pass this into the method at some point
     if vehicle_pos is None:
@@ -60,7 +60,7 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
             brain = Genetic.make_random_brain()
             random_brains += 1
         forward = True
-        if random.random() > 0.5:  # chance of a vehicle going backwards
+        if random.random() < backward_chance:  # chance of a vehicle going backwards
             forward = False
         v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, brain=brain, forward=forward)
         vehicle_data_in_t = []
@@ -116,7 +116,7 @@ def random_brain_benchmark(actual, light, random_brains=1000, iterations=100, st
 
 class Cycles:
 
-    def __init__(self, type=None, net_filename=None, light_pos=None):
+    def __init__(self, light_pos, type=None, net_filename=None):
 
         self.net = None  # NARX network
         self.net_filename = net_filename
@@ -220,20 +220,15 @@ class Cycles:
             plt.plot(range(0, len(mser)), mser)
             plt.show()
 
+            print 'Error: ' + str(sum(msel) + sum(mser))
+
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True,
-                      graphics=False, seed=None):
-        filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
-        # check if filename is already taken
-        count = 1
-        new_filename = filename
-        while os.path.exists(new_filename):
-            new_filename = filename + '_v' + str(count)
-            count += 1
-        filename = new_filename
+                      seed=None, backward_chance=0, graphics=False):
+        self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(self.light, runs=learning_runs, iterations=learning_time,
-                                                        graphics=graphics, gamma=gamma, seed=seed)
+                                                        graphics=graphics, gamma=gamma, seed=seed, backward_chance=backward_chance)
 
         # creation of network
         print '\nNetwork training started at ' + str(
@@ -246,6 +241,14 @@ class Cycles:
             self.net = PyrennNarx(layers=layers, delay=delay)
             # train network
             self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
+
+            # check if filename is already taken
+            count = 1
+            new_filename = self.net_filename
+            while os.path.exists(new_filename):
+                new_filename = self.net_filename + '_v' + str(count)
+                count += 1
+            filename = new_filename
             # save network to file
             self.net.save_to_file(filename=filename)
         elif api == 'skmlp':
@@ -253,11 +256,19 @@ class Cycles:
 
             self.net.fit(train_input, delay, use_mean)
 
+            # check if filename is already taken
+            count = 1
+            new_filename = self.net_filename
+            while os.path.exists(new_filename):
+                new_filename = self.net_filename + '_v' + str(count)
+                count += 1
+            filename = new_filename
+
             self.net.to_file(filename)
         else:
             print 'Wrong network type given'
 
-        print 'Finished training network "%s" in %s' % (filename, datetime.timedelta(seconds=time.time() - start_time))
+        print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
@@ -373,7 +384,7 @@ class Cycles:
         if benchmark:
             passed_test = random_brain_benchmark(actual_vehicle, random_brains=1000, iterations=iterations,
                                                  start_pos=self.random_vehicle.pos[-1],
-                                                 start_a=self.random_vehicle.angle, light=self.sim.light,
+                                                 start_a=self.random_vehicle.angle, light=self.light,
                                                  ga_individuals=self.ga_individuals, ga_generations=self.ga_generations,
                                                  graphics=True)
             print 'Predicted vehicle passed test: ' + str(passed_test)
