@@ -126,13 +126,13 @@ class Simulator:
         pygame.display.quit()
 
     def quick_simulation(self, iteration, graphics=False, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                         gamma=0.3, use_seed=None, brain=None, forward=True):
+                         gamma=0.3, brain=None, forward=True):
         """ Runs a simulation then closes then window """
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, use_seed, self.light, forward=forward)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, forward=forward)
 
         vehicle = self.run_simulation(iteration, graphics, vehicle)
         self.close()

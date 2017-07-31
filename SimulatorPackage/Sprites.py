@@ -123,7 +123,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
     radius = 25  # radius of vehicle size
 
-    def __init__(self, start_pos, start_angle, gamma, seed, light, forward=True):
+    def __init__(self, start_pos, start_angle, gamma, light, forward=True):
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -135,8 +135,6 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         # vehicle logic init
         self.light = light
         self.gamma = gamma
-        if seed is not None:  # seed to make vehicle random movement the same
-            random.seed(seed)
         self.dt = dt
         # velocity for left and right wheels
         self.wheel_l, self.wheel_r = 0, 0

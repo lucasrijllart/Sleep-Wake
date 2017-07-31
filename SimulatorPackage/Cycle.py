@@ -47,6 +47,8 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
         vehicle_angle = 200
     else:
         vehicle_angle = random.randint(0, 360)
+    if seed is not None:
+        random.seed(seed)
 
     data = []
     sim = Simulator(light)
@@ -60,7 +62,7 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
         forward = True
         if random.random() > 0.5:  # chance of a vehicle going backwards
             forward = False
-        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, seed, brain=brain, forward=forward)
+        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, brain=brain, forward=forward)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -219,7 +221,7 @@ class Cycles:
             plt.show()
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True,
-                      graphics=False):
+                      graphics=False, seed=None):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
@@ -231,7 +233,7 @@ class Cycles:
 
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(self.light, runs=learning_runs, iterations=learning_time,
-                                                        graphics=graphics, gamma=gamma)
+                                                        graphics=graphics, gamma=gamma, seed=seed)
 
         # creation of network
         print '\nNetwork training started at ' + str(
