@@ -17,6 +17,7 @@ backward_chance = 0
 # Error graph
 testing_time = 200  # has to me predict_after + delays + 1
 predict_after = 50
+brain = [-1, 10, -1, 10, 5, 5]
 
 # Wake learning (can be less than delay)
 initial_random_movement = 25
@@ -30,15 +31,16 @@ generations = 20
 wake_test_iter = 200
 
 # Booleans for running
-train_network = True
+train_network = False
 error_graph = True
+test_network = True
 
 run_cycles = False
 
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r500t100d50e1000')
+    cycle = Cycles(light_pos, net_filename='narx/r100t100d20e201')
 else:
     cycle = Cycles(light_pos)
 
@@ -47,10 +49,9 @@ if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, seed,
                         backward_chance, graphics=False)
 
-if error_graph:
-    brain = [-1, 10, -1, 10, 5, 5]
-    cycle.show_error_graph(testing_time, predict_after, brain=None)
+cycle.show_error_graph(testing_time, predict_after, brain=None, seed=2, graphics=True) if error_graph is True else None
 
+cycle.test_network() if test_network is True else None
 
 if run_cycles:
     cycle.wake_learning(initial_random_movement)

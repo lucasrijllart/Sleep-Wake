@@ -144,83 +144,69 @@ class Cycles:
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=400, predict_after=100, brain=None, gamma=0.2):
+    def show_error_graph(self, testing_time=300, predict_after=50, brain=None, seed=None, gamma=0.2, graphics=True):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
             return
+        if seed is not None:
+            random.seed(seed)
         # Lookahead is testing time - predict after
         look_ahead = testing_time - predict_after
 
-        # Create random brain and give it to vehicle
-        if brain is not None:
-            brain = [float(item) for item in brain]
-
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator(self.light)
-        vehicle = sim.init_simulation(testing_time, True, veh_angle=200, brain=brain, gamma=gamma)
-        sensor_motor = []
+        vehicle = sim.init_simulation(testing_time, graphics, veh_angle=200, brain=brain, gamma=gamma)
+        data = []
         for x in range(0, testing_time):
-            sensor_motor.append(
+            data.append(
                 [vehicle.motor_left[x], vehicle.motor_right[x], vehicle.sensor_left[x], vehicle.sensor_right[x]])
-        sensor_motor = np.transpose(np.array(sensor_motor))
-        # print sensor_motor.shape
-
-        data = sensor_motor  # data up until the initial run time
+        data = np.transpose(np.array(data))
 
         # check if vehicle has a brain, if not just pass it the data
         if brain is not None:
-           pass
+            brain = [float(item) for item in brain]
+            pass
         else:  # vehicle does not have a brain, just random movement
-
+            # make predictions
             sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after)
 
-            # cannot create a predicted visualisation because the wheels are the same for both
-            # Create vehicle and pass it the wheel data, previous random movement, and then run
-            predict_after_angle = vehicle.bearing[predict_after] * 180 / math.pi
-            prediction_vehicle = ControllableVehicle(vehicle.pos[predict_after], predict_after_angle, self.light)
-            prediction_vehicle.set_wheels([[[item] for item in log] for log in wheel_log])
-            prediction_vehicle.random_movement = vehicle.pos
-            # sim.run_simulation(len(wheel_log), graphics=True, vehicle=prediction_vehicle)
+            v_iter = len(sensor_log[0])
+            msel = [((sensor_log[0][i] - vehicle.sensor_left[i]) ** 2) / v_iter for i in range(0, v_iter)]
+            mser = [((sensor_log[1][i] - vehicle.sensor_right[i]) ** 2) / v_iter for i in range(0, v_iter)]
 
-            # add previous and predicted values for sensors to display in graph
-            sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
-            sensor_right = np.concatenate((sensor_motor[3][:predict_after], sensor_log[1]))
+            if graphics:
+                # get sensory information of vehicle and compare with predicted
+                plt.figure(1)
+                brain = 'random'
+                title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s,' \
+                        'with %d timesteps and predictions starting at t=%d, and with %s brain' %\
+                        (self.net_filename, testing_time, predict_after, brain)
+                plt.suptitle(title)
+                i = np.array(range(0, len(vehicle.sensor_left)))
+                i2 = np.array(range(predict_after, testing_time))
+                plt.subplot(221)
+                plt.title('Left sensor values')
+                plt.plot(i, vehicle.sensor_left, 'b', label='real')
+                plt.plot(i2, sensor_log[0], 'r', label='predicted')
 
-            # get sensory information of vehicle and compare with predicted
-            plt.figure(1)
-            brain = 'random'
-            title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
-                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename,
-                                                                                           testing_time, predict_after,
-                                                                                           brain)
-            plt.suptitle(title)
-            i = np.array(range(0, len(vehicle.sensor_left)))
-            i2 = np.array(range(predict_after, testing_time))
-            plt.subplot(221)
-            plt.title('Left sensor values')
-            plt.plot(i, vehicle.sensor_left, 'b', i2, sensor_log[0], 'r')
+                plt.subplot(222)
+                plt.title('Right sensor values')
+                plt.plot(i, vehicle.sensor_right, 'b', label='real')
+                plt.plot(i2, sensor_log[1], 'r', label='predicted')
+                plt.legend()
 
-            plt.subplot(222)
-            plt.title('Right sensor values')
-            plt.plot(i, vehicle.sensor_right, 'b', label='real')
-            plt.plot(i2, sensor_log[1], 'r', label='predicted')
-            plt.legend()
+                plt.subplot(223)
+                plt.title('MSE of left sensor')
+                plt.plot(i2, msel)
 
-            msel = [((sensor_left[i] - vehicle.sensor_left[i]) ** 2) / len(sensor_left) for i in
-                    range(0, len(sensor_left))]
-            plt.subplot(223)
-            plt.title('MSE of left sensor')
-            plt.plot(range(0, len(msel)), msel)
+                plt.subplot(224)
+                plt.title('MSE of right sensor')
+                plt.plot(i2, mser)
+                print 'Error: ' + str(sum(msel) + sum(mser))
+                plt.show()
 
-            mser = [((sensor_right[i] - vehicle.sensor_right[i]) ** 2) / len(sensor_right) for i in
-                    range(0, len(sensor_right))]
-            plt.subplot(224)
-            plt.title('MSE of left sensor')
-            plt.plot(range(0, len(mser)), mser)
-            plt.show()
-
-            print 'Error: ' + str(sum(msel) + sum(mser))
+            return sum(msel) + sum(mser)
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True,
                       seed=None, backward_chance=0, graphics=False):
@@ -269,6 +255,18 @@ class Cycles:
             print 'Wrong network type given'
 
         print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
+
+    def test_network(self, tests=100, test_time=200, seed=2):
+        print '\nTesting network %s for %d times...' % (self.net_filename, tests)
+
+        combined_error = 0
+        for it in range(0, tests):
+            if it % 10 == 0:
+                print '\rTest %d/%d' % (it, tests),
+            combined_error += self.show_error_graph(test_time, seed=seed, graphics=False)
+        combined_error /= tests
+
+        print '\rFinished network test. Average error: %s' % combined_error
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
