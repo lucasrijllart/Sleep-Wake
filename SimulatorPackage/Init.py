@@ -11,7 +11,7 @@ layers = [4, 20, 40, 20, 2]  # [input, layer1, layer2, output] don't change in/o
 tap_delay = 10
 max_epochs = 10
 use_mean = False
-seed = 1
+train_seed = None
 backward_chance = 0
 
 # Error graph
@@ -40,18 +40,18 @@ run_cycles = False
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r100t100d20e201')
+    cycle = Cycles(light_pos, net_filename='narx/r100t100d40e500')
 else:
     cycle = Cycles(light_pos)
 
 
 if train_network:
-    cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, seed,
+    cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
                         backward_chance, graphics=False)
 
 cycle.show_error_graph(testing_time, predict_after, brain=None, seed=2, graphics=True) if error_graph is True else None
 
-cycle.test_network() if test_network is True else None
+cycle.test_network(200) if test_network is True else None
 
 if run_cycles:
     cycle.wake_learning(initial_random_movement)

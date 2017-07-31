@@ -144,7 +144,7 @@ class Cycles:
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=300, predict_after=50, brain=None, seed=None, gamma=0.2, graphics=True):
+    def show_error_graph(self, testing_time=300, predict_after=50, brain=None, gamma=0.2, seed=None, graphics=True):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -256,14 +256,15 @@ class Cycles:
 
         print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
 
-    def test_network(self, tests=100, test_time=200, seed=2):
+    def test_network(self, tests=100, test_time=200, seed=None):
         print '\nTesting network %s for %d times...' % (self.net_filename, tests)
-
+        if seed is not None:
+            random.seed(seed)
         combined_error = 0
         for it in range(0, tests):
             if it % 10 == 0:
                 print '\rTest %d/%d' % (it, tests),
-            combined_error += self.show_error_graph(test_time, seed=seed, graphics=False)
+            combined_error += self.show_error_graph(test_time, graphics=False)
         combined_error /= tests
 
         print '\rFinished network test. Average error: %s' % combined_error
