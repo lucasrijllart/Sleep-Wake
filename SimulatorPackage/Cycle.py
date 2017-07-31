@@ -1,5 +1,5 @@
 import numpy as np
-import random, time, datetime
+import random, time, datetime, math
 from Simulator import Simulator
 from Narx import PyrennNarx, NarxMLP
 import Narx as narx
@@ -57,8 +57,10 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
         if random.random() < 0.0:  # 30% chance of vehicle being a random brain
             brain = Genetic.make_random_brain()
             random_brains += 1
-        # add 1 because the simulation returns iterations-1 as the first timestep is the starting pos (not recorded)
-        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, seed, brain=brain)
+        forward = True
+        if random.random() > 0.5:  # chance of a vehicle going backwards
+            forward = False
+        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, seed, brain=brain, forward=forward)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -69,7 +71,7 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
 
 def random_brain_benchmark(actual, light, random_brains=1000, iterations=100, start_pos=None, start_a=random.randint(0, 360),
                            graphics=False, ga_individuals=30, ga_generations=20):
-    """ Shows a graph of the fitness of a number of random brains """
+    """ Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains """
     print '\nStarting benchmark test for %d random brains...' % random_brains
     if start_pos is None:
         start_pos = [random.randint(0, Simulator.window_width), random.randint(0, Simulator.window_height)]
@@ -171,7 +173,13 @@ class Cycles:
 
             sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after)
 
-            brain = 'random'
+            # cannot create a predicted visualisation because the wheels are the same for both
+            # Create vehicle and pass it the wheel data, previous random movement, and then run
+            predict_after_angle = vehicle.bearing[predict_after] * 180 / math.pi
+            prediction_vehicle = ControllableVehicle(vehicle.pos[predict_after], predict_after_angle, self.light)
+            prediction_vehicle.set_wheels([[[item] for item in log] for log in wheel_log])
+            prediction_vehicle.random_movement = vehicle.pos
+            # sim.run_simulation(len(wheel_log), graphics=True, vehicle=prediction_vehicle)
 
             # add previous and predicted values for sensors to display in graph
             sensor_left = np.concatenate((sensor_motor[2][:predict_after], sensor_log[0]))
@@ -179,12 +187,13 @@ class Cycles:
 
             # get sensory information of vehicle and compare with predicted
             plt.figure(1)
+            brain = 'random'
             title = 'Graph showing predicted vs actual values for sensors and Mean Squared Error.\nNetwork:%s, with' \
-                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (
-                    self.net_filename, testing_time,
-                    predict_after, brain)
+                    ' %d timesteps and predictions starting at t=%d, and with %s brain' % (self.net_filename,
+                                                                                           testing_time, predict_after,
+                                                                                           brain)
             plt.suptitle(title)
-            i = np.array(range(0, len(sensor_left)))
+            i = np.array(range(0, len(vehicle.sensor_left)))
             i2 = np.array(range(predict_after, testing_time))
             plt.subplot(221)
             plt.title('Left sensor values')
@@ -209,7 +218,8 @@ class Cycles:
             plt.plot(range(0, len(mser)), mser)
             plt.show()
 
-    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True):
+    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True,
+                      graphics=False):
         filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
         # check if filename is already taken
         count = 1
@@ -221,7 +231,7 @@ class Cycles:
 
         # collect data for NARX and testing and pre-process data
         train_input, train_target = collect_random_data(self.light, runs=learning_runs, iterations=learning_time,
-                                                        graphics=False, gamma=gamma)
+                                                        graphics=graphics, gamma=gamma)
 
         # creation of network
         print '\nNetwork training started at ' + str(
