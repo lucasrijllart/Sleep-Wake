@@ -343,6 +343,7 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
+        print self.vehicle_first_move
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         self.ga_individuals = individuals
@@ -402,6 +403,72 @@ class Cycles:
                 range(0, len(v_iter))]
         plt.plot(v_iter, mser)
         plt.show()
+
+    def sleep_wake(self, random_movements=50, cycles=2,  look_ahead=100, individuals=25, generations=10):
+
+        # Perform the initial random movement, first wake phase
+        self.wake_learning(random_movements)
+
+
+        past_movements = self.format_movement_data(self.random_vehicle)
+        # set the individuals and the generations
+        # for the ga of every cycle
+        # TODO: This variables could decrease over time when getting closer and closer to the light
+        self.ga_individuals = individuals
+        self.ga_generations = generations
+
+        # intialize vehicle position , movement and angle
+        last_move = self.vehicle_first_move
+        last_pos = self.random_vehicle.pos[-1]
+        last_angle = self.random_vehicle.angle
+
+        ga = GA(self.light, graphics=False)
+
+        for _ in range(0, cycles):
+
+            # SLEEP NOW
+            # run GA and find best brain to give to testing
+            ga_result = ga.run_offline(self.net, last_move, look_ahead,
+                                       veh_pos=last_pos,
+                                       veh_angle=last_angle, individuals=individuals,
+                                       generations=generations, crossover_rate=0.6, mutation_rate=0.3)
+            self.brain = ga_result[0]
+            predicted_sensors = ga_result[1]
+            print predicted_sensors
+            predicted_wheels = ga_result[2]
+
+            # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
+            ga_prediction_vehicle = ControllableVehicle(last_pos, last_angle, self.light)
+            ga_prediction_vehicle.set_wheels(predicted_wheels)
+            ga_prediction_vehicle.random_movement = self.random_vehicle.pos
+            steps = len(predicted_wheels)
+            # WAKE UP AND ACT
+            last_wake_vehicle = self.sim.run_simulation(steps, graphics=True, cycle='sleep',
+                                                            vehicle=ga_prediction_vehicle)
+
+            # update parameters from where the vehicle stopped
+            last_move = self.format_movement_data(last_wake_vehicle)
+            past_movements = np.concatenate((past_movements, last_move), axis=1)
+            last_pos = last_wake_vehicle.pos[-1]
+            last_angle = last_wake_vehicle.angle
+
+
+    def format_movement_data(self, vehicle):
+        steps = len(vehicle.motor_left)
+        vehicle_move = [[vehicle.motor_left[0], vehicle.motor_right[0],
+                         vehicle.sensor_left[0], vehicle.sensor_right[0]]]
+        for t in range(1, steps):
+            vehicle_move.append([vehicle.motor_left[t], vehicle.motor_right[t],
+                                 vehicle.sensor_left[t], vehicle.sensor_right[t]])
+        vehicle_latest_move = []
+        for t in range(0, len(vehicle_move)):
+            vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
+        return np.transpose(np.array(vehicle_latest_move))
+
+
+
+
+
 
     def wake_testing(self, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled

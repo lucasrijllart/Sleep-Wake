@@ -2,7 +2,7 @@ from Simulator import Simulator
 from Cycle import Cycles
 
 # Cycles
-light_pos = [Simulator.window_width/2, Simulator.window_height/2]  # usually [900,600]
+light_pos = [1100, 600]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
@@ -13,20 +13,20 @@ tap_delay = 40
 max_epochs = 20
 use_mean = False
 train_seed = None
-backward_chance = 0.5
+
 
 # Error graph
 testing_time = 200  # has to me predict_after + delays + 1
-predict_after = 40
-brain = [-1, 10, -1, 10, 5, 5]
+predict_after = 20
+brain = [-1, 10, -1, 10, 10, 10]
 
 # Wake learning (can be less than delay)
-initial_random_movement = 40
+initial_random_movement = 25
 
 # Sleep
-look_ahead = 40
-individuals = 20
-generations = 30
+look_ahead = 30 # this is the same look ahead for the sleep_wake phase
+individuals = 10
+generations = 20
 
 # Wake testing
 wake_test_iter = 200
@@ -34,14 +34,19 @@ wake_test_iter = 200
 # Booleans for running
 train_network = False
 error_graph = False
-test_network = True
+test_network = False
 
-run_cycles = True
+# Cycle running
+run_cycles = False
+
+sleep_wake = True
+cycles = 2
+
 
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r1t1500d40e50')
+    cycle = Cycles(light_pos, net_filename='narx/r100t100d40e500')
 else:
     cycle = Cycles(light_pos)
 
@@ -51,6 +56,7 @@ if train_network:
                         graphics=True)
 
 cycle.show_error_graph(testing_time, predict_after, brain=None, seed=None, graphics=True) if error_graph is True else None
+cycle.show_error_graph(testing_time, predict_after, brain=None, seed=2.5, graphics=True) if error_graph is True else None
 
 cycle.test_network() if test_network is True else None
 
@@ -60,3 +66,6 @@ if run_cycles:
     cycle.sleep(look_ahead, individuals, generations)
 
     cycle.wake_testing(wake_test_iter)
+
+if sleep_wake:
+    cycle.sleep_wake(initial_random_movement, cycles, look_ahead, individuals, generations)
