@@ -216,9 +216,12 @@ class PyrennNarx:
         wheel_log = []  # return that
 
         # If no previous observations. Add zro padding
-        padding = self.delay - past_data.shape[1]
-        if padding > 0:
-            padding = np.zeros((4, padding), dtype=float)
+        missing_slice = int(self.delay - past_data.shape[1])
+        if missing_slice > 0:
+            padding = np.zeros((4, missing_slice), dtype=float)
+            sensors = data[2:, 0]
+            padding[2, :] = sensors[0]
+            padding[3, :] = sensors[1]
             past_data = np.concatenate((padding, past_data), axis=1)
 
         next_input = np.array(past_data[:, -1])

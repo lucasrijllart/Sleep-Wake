@@ -162,7 +162,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         get_sensors(self, t)
 
         # calculate motor intensity
-        if random.random() < 0.5:
+        if random.random() < 2:
             self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias,
                                           self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias]
         self.motor_left.append(self.wheel_l)

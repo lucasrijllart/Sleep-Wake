@@ -17,7 +17,7 @@ backward_chance = 0
 # Error graph
 testing_time = 200  # has to me predict_after + delays + 1
 predict_after = 50
-brain = [-1, 10, -1, 10, 5, 5]
+brain = [-1, 10, -1, 10, 10, 10]
 
 # Wake learning (can be less than delay)
 initial_random_movement = 25
