@@ -5,6 +5,12 @@ import numpy as np
 
 # dt constant for all sprites
 dt = 2
+# size of original image (does not change!)
+image_size = 100.0
+# radius of vehicles (can change this for size of vehicles)
+all_sprites_radius = 25.0
+# ratio of image for transformation (diameter / image size)
+image_ratio = (all_sprites_radius * 2) / image_size
 
 
 def get_sensors(v, time):
@@ -39,7 +45,7 @@ def update_position(vehicle, time):
 def update_graphics(vehicle):
     previous_center = vehicle.pos[-1]
     degree = vehicle.bearing[-1] * 180 / math.pi
-    vehicle.image = pygame.transform.rotozoom(vehicle.original, degree, 0.5)
+    vehicle.image = pygame.transform.rotozoom(vehicle.original, degree, image_ratio)
     vehicle.rect = vehicle.image.get_rect()
     vehicle.rect.center = previous_center
 
@@ -58,7 +64,7 @@ def run_through_brain(prediction, ind):
 class ControllableVehicle(pygame.sprite.Sprite):
     # PyGame constants
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
-    radius = 25  # radius of vehicle size
+    radius = all_sprites_radius  # radius of vehicle size
 
     def __init__(self, start_pos, start_angle, light):
         # PyGame init
@@ -75,7 +81,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.wheel_data = []
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
-        self.random_movement = []
+        self.random_movement = []  # array that holds the previous random movement to draw it on the screen
         self.light = light
 
         # weights sensor->motor (lr = left sensor to right wheel)
@@ -121,9 +127,15 @@ class ControllableVehicle(pygame.sprite.Sprite):
 class RandomMotorVehicle(pygame.sprite.Sprite):
     # PyGame constants
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
-    radius = 25  # radius of vehicle size
+    radius = all_sprites_radius
 
-    def __init__(self, start_pos, start_angle, gamma, light, forward=True):
+    min_start_iter = 40
+    max_start_iter = 80
+    min_stop_iter = 5
+    max_stop_iter = 10
+
+    def __init__(self, start_pos, start_angle, gamma, light, start_stop):
+        forward = True
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -147,6 +159,12 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
 
+        # Stop-Start random movement vars
+        self.start_stop = start_stop
+        self.moves_left = random.randint(self.min_start_iter, self.max_start_iter)  # number of timesteps left in start stage
+        self.cool_down = None  # number of timesteps left in stop stage
+        self.is_in_stop = False  #
+
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
         self.sensor_right = []
@@ -162,9 +180,29 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         get_sensors(self, t)
 
         # calculate motor intensity
-        if random.random() < 2:
-            self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias,
-                                          self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias]
+        if self.start_stop:
+            if self.is_in_stop:  # in stop stage
+                if self.cool_down > 0:  # stop and still in cool down
+                    self.wheel_l, self.wheel_r = 0, 0
+                    self.cool_down -= 1
+                else:  # last stop and should start again
+                    self.moves_left = random.randint(self.min_start_iter, self.max_start_iter)
+                    self.is_in_stop = False
+            else:  # in start stage
+                if self.moves_left > 0:  # start and still has moves
+                    if random.random() < 0.5:
+                        self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+                        self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+                        self.moves_left -= 1
+                else:  # last start and should go to stop
+                    self.cool_down = random.randint(self.min_stop_iter, self.max_stop_iter)
+                    self.is_in_stop = True
+        else:
+            if random.random() < 0.5:
+                self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+                self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+                self.moves_left -= 1
+
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
 
@@ -175,7 +213,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 class BrainVehicle(pygame.sprite.Sprite):
     # PyGame constants
     image = pygame.image.load('images/attacker.png')  # image of vehicle
-    radius = 25  # radius of vehicle size
+    radius = all_sprites_radius  # radius of vehicle size
 
     # Brain constant
     bias_constant = 10

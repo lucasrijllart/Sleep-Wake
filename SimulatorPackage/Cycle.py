@@ -6,7 +6,7 @@ import Narx as narx
 import matplotlib.pyplot as plt
 import Genetic
 from Genetic import GA as GA
-from Sprites import BrainVehicle, ControllableVehicle, Light
+from Sprites import *
 import os.path
 
 
@@ -25,47 +25,13 @@ def pre_process_by_time(raw_data):
 def pre_process_by_vehicle(raw_data):
     """ Returns the data in a list of vehicles. Every vehicle has a list of timesteps with each motors and sensors """
     new_inputs = []
-    new_targets = []
     for vehicle in raw_data:
         vehicle_timesteps = []
         for timestep in vehicle:
             vehicle_timesteps.append(np.transpose(np.array(timestep)))
         new_inputs.append(np.transpose(np.array(vehicle_timesteps)))
-        new_targets.append(np.transpose(np.array(vehicle_timesteps))[-2:, :])
     new_inputs = np.array(new_inputs)
-    new_targets = np.array(new_targets)
-    return [new_inputs, new_targets]
-
-
-def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=10, iterations=1000,
-                        graphics=False, gamma=0.3, seed=None, backward_chance=0):
-    """ Runs many vehicles in simulations and collects their sensory and motor information """
-    random_brains = 0  # maybe pass this into the method at some point
-    if vehicle_pos is None:
-        vehicle_pos = [300, 300]  # [random.randint(25, 1215), random.randint(25, 695)]
-    if vehicle_angle_rand is False:
-        vehicle_angle = 200
-    else:
-        vehicle_angle = random.randint(0, 360)
-    if seed is not None:
-        random.seed(seed)
-
-    data = []
-    sim = Simulator(light)
-    for run in range(0, runs):
-        if vehicle_angle_rand:  # update angle for each vehicle
-            vehicle_angle = random.randint(0, 360)
-        brain = None
-        if random.random() < 0.0:  # 30% chance of vehicle being a random brain
-            brain = Genetic.make_random_brain()
-            random_brains += 1
-        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, brain=brain)
-        vehicle_data_in_t = []
-        for t in range(0, iterations):
-            vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
-        data.append(vehicle_data_in_t)
-    print '\nCollected data from %d vehicles over %d iterations with %d randoms' % (runs, iterations, random_brains)
-    return pre_process_by_vehicle(data)
+    return new_inputs
 
 
 class Cycles:
@@ -98,18 +64,61 @@ class Cycles:
         self.ga_individuals = None
         self.ga_generations = None
 
+        self.required_distance_from_light = 400
+
         self.sim = None
         if light_pos is None:
             light_pos = [1100, 600]
         self.light = Light(light_pos)
 
-
-
         self.actual_vehicle = None
 
         self.count_cycles = 0
 
-    def show_error_graph(self, testing_time=300, predict_after=50, brain=None, gamma=0.2, seed=None, graphics=True):
+    def find_random_pos(self):
+        """ Returns a random position and angle where the position is far enough from the light
+
+        :return: [[pos_x, pos_y], angle]
+        """
+        dist_to_light, rand_x, rand_y = 0, 0, 0
+        while dist_to_light < self.required_distance_from_light:
+            rand_x = random.randint(RandomMotorVehicle.radius, Simulator.window_width)
+            rand_y = random.randint(RandomMotorVehicle.radius, Simulator.window_height)
+            dist_to_light = np.sqrt((rand_x - self.light.pos[0]) ** 2 + (rand_y - self.light.pos[1]) ** 2)
+        return [rand_x, rand_y], random.randint(0, 360)
+
+    def collect_random_data(self, rand_vehicle_pos=True, runs=10, iterations=1000, data_collection_graphics=False,
+                            seed=None, gamma=0.3):
+        """ Runs many vehicles in simulations and collects their sensory and motor information
+
+        :param rand_vehicle_pos: if vehicle should spawn randomly
+        :param runs: number of vehicle runs to execute
+        :param iterations: number of iterations of a run
+        :param data_collection_graphics: show the vehicles while collecting data
+        :param gamma:
+        :param seed: seed to make the collection of data identically random
+        :return: data collected and pre-processed
+        """
+        if rand_vehicle_pos:  # needs to be further than 500
+            vehicle_pos, vehicle_angle = self.find_random_pos()
+        else:
+            vehicle_pos = [900, 600]
+            vehicle_angle = 200
+        if seed is not None:
+            random.seed(seed)
+
+        data = []
+        sim = Simulator(self.light)
+        for run in range(0, runs):
+            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=True)
+            vehicle_data_in_t = []
+            for t in range(0, iterations):
+                vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
+            data.append(vehicle_data_in_t)
+        print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
+        return pre_process_by_vehicle(data)
+
+    def show_error_graph(self, testing_time=300, predict_after=50, brain=None, seed=None, graphics=True):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -121,7 +130,10 @@ class Cycles:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator(self.light)
-        vehicle = sim.init_simulation(testing_time, graphics, veh_angle=200, brain=brain, gamma=gamma)
+        # find random starting pos
+        vehicle_pos, vehicle_angle = self.find_random_pos()
+        # execute vehicle
+        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=vehicle_pos, veh_angle=vehicle_angle, brain=brain, start_stop=True)
         data = []
         for x in range(0, testing_time):
             data.append(
@@ -173,7 +185,7 @@ class Cycles:
 
             return sum(msel) + sum(mser)
 
-    def random_brain_benchmark(self, random_brains=1000, ga_graphics=True):
+    def benchmark_tests(self, random_brains=1000, ga_graphics=True):
         """
         Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains
         :param random_brains: number of random brains to run to get a good benchmark curve
@@ -230,20 +242,22 @@ class Cycles:
         plt.legend()
         plt.show()
 
-        print 'Predicted time: %d\nReal-world time: %d' % (pred_time, ga_time)
+        # print 'Predicted time: %d\nReal-world time: %d' % (pred_time, ga_time)
         benchmark_test = predicted_score > random_mean_fit  # test if the predicted fitness is better than chance
         time_test = pred_time < ga_time  # test if the predicted time is smaller than real-world time
+
+        print 'Predicted vehicle tests:\n\tRandom benchmark:\t%s\n\tOn/Offline time:\t%s' \
+              % (benchmark_test, time_test)
 
         return benchmark_test, time_test
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True,
-                      seed=None, backward_chance=0, gamma=0.3, graphics=False):
+                      seed=None, graphics=False):
         self.training_runs, self.training_time = learning_runs, learning_time
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
-        train_input, train_target = collect_random_data(self.light, runs=learning_runs, iterations=learning_time,
-                                                        graphics=graphics, gamma=gamma, seed=seed, backward_chance=backward_chance)
+        train_input = self.collect_random_data(True, learning_runs, learning_time, graphics, seed)
 
         # creation of network
         print '\nNetwork training started at ' + str(
@@ -317,8 +331,9 @@ class Cycles:
         self.random_movements = random_movements
         # Create vehicle in simulation
         self.sim = Simulator(self.light)
+        vehicle_pos, vehicle_angle = self.find_random_pos()
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
-                                                       veh_pos=[300, 300], veh_angle=200)
+                                                       veh_pos=vehicle_pos, veh_angle=vehicle_angle)
         vehicle_move = [[self.random_vehicle.motor_left[0], self.random_vehicle.motor_right[0],
                          self.random_vehicle.sensor_left[0], self.random_vehicle.sensor_right[0]]]
         for t in range(1, random_movements):
@@ -426,6 +441,4 @@ class Cycles:
         plt.show()
 
         if benchmark:
-            passed_tests = self.random_brain_benchmark()
-            print 'Predicted vehicle tests:\n\tRandom benchmark: %s\n\tOnline time: %s'\
-                  % (passed_tests[0], passed_tests[1])
+            self.benchmark_tests()

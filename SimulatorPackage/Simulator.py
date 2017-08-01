@@ -59,7 +59,7 @@ def show_graph(vehicle):
 
 class Simulator:
     window_width = 1800  # 1240
-    window_height = 1000  # 720
+    window_height = 1200  # 720
 
     def __init__(self, light):
         pygame.init()
@@ -107,7 +107,7 @@ class Simulator:
         pygame.display.quit()
 
     def quick_simulation(self, iteration, graphics=False, veh_pos=None, veh_angle=random.randint(0, 360),
-                         gamma=0.3, brain=None):
+                         gamma=0.3, brain=None, start_stop=False):
         """ Runs a simulation then closes then window """
         if veh_pos is None:
             veh_pos = [300, 300]
@@ -115,14 +115,14 @@ class Simulator:
             vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
 
         vehicle = self.run_simulation(iteration, graphics, vehicle)
         self.close()
         return vehicle
 
     def init_simulation(self, iteration, graphics, cycle='', veh_pos=None, veh_angle=random.randint(0, 360),
-                        gamma=0.3, brain=None):
+                        gamma=0.3, brain=None, start_stop=False):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
         if veh_pos is None:
             veh_pos = [300, 300]
@@ -130,7 +130,7 @@ class Simulator:
             vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
             vehicle.set_values(brain)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
 
         vehicle = self.run_simulation(iteration, graphics, vehicle, cycle=cycle)
         return vehicle
