@@ -72,13 +72,13 @@ class GA:
                                              format(best_ind[1][4], '.2f'), format(best_ind[1][5], '.2f'))
         plt.suptitle('Finished GA of %d individuals and %d generations, with fitness %s of brain: %s' % (
             self.individuals, self.generations, format(best_ind[2], '.3f'), brain))
-        plt.subplot(221)
+        plt.subplot(121)
         plt.title('Graph of best fitness by generation')
         plt.xlabel('iterations')
         plt.ylabel('max fitness')
         plt.plot(range(0, len(best_fit)), best_fit)
 
-        plt.subplot(222)
+        plt.subplot(122)
         plt.title('Individual fitness over time')
         plt.xlabel('iterations')
         plt.ylabel('fitness of individuals')
@@ -90,14 +90,6 @@ class GA:
         plt.scatter(i, self.min_fit, s=4, label='min')
         plt.plot(i, self.min_fit)
         plt.legend()
-
-        plt.subplot(223)
-        plt.title('Sensor avg')
-        plt.plot(range(0, len(self.sav)), self.sav)
-
-        plt.subplot(224)
-        plt.title('Max diff')
-        plt.plot(range(0, len(self.difff)), self.difff)
 
         plt.show()
 
@@ -240,11 +232,6 @@ class GA:
         self.individuals = individuals
         self.generations = generations
 
-        # Uncomment this to run GA with simulation
-        # print 'Starting GA with simulation'
-        # self.run(veh_pos, veh_angle, light_pos)
-        # self.offline = True
-
         print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals, generations, look_ahead)
         return self._start_ga(crossover_rate, mutation_rate)
 
@@ -265,5 +252,5 @@ class GA:
             self.iterations = iterations
         self.offline = False
 
-        print '\nStarting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations, iterations)
+        print 'Starting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations, iterations)
         return self._start_ga(crossover_rate, mutation_rate)

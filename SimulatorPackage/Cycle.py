@@ -1,5 +1,5 @@
 import numpy as np
-import random, time, datetime, math
+import random, time, datetime, re
 from Simulator import Simulator
 from Narx import PyrennNarx, NarxMLP
 import Narx as narx
@@ -59,10 +59,7 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
         if random.random() < 0.0:  # 30% chance of vehicle being a random brain
             brain = Genetic.make_random_brain()
             random_brains += 1
-        forward = True
-        if random.random() < backward_chance:  # chance of a vehicle going backwards
-            forward = False
-        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, brain=brain, forward=forward)
+        v = sim.quick_simulation(iterations, graphics, vehicle_pos, vehicle_angle, gamma, brain=brain)
         vehicle_data_in_t = []
         for t in range(0, iterations):
             vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -71,55 +68,17 @@ def collect_random_data(light, vehicle_pos=None, vehicle_angle_rand=True, runs=1
     return pre_process_by_vehicle(data)
 
 
-def random_brain_benchmark(actual, light, random_brains=1000, iterations=100, start_pos=None, start_a=random.randint(0, 360),
-                           graphics=False, ga_individuals=30, ga_generations=20):
-    """ Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains """
-    print '\nStarting benchmark test for %d random brains...' % random_brains
-    if start_pos is None:
-        start_pos = [random.randint(0, Simulator.window_width), random.randint(0, Simulator.window_height)]
-    fitnesses = []
-
-    start_time = time.time()
-    for individual in range(0, random_brains):
-        brain = Genetic.make_random_brain()
-        fitnesses.append(Genetic.get_fitness(start_pos, start_a, brain, iterations, light))
-    print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
-    random_mean_fit = np.mean(fitnesses)
-
-    ga = GA(light, graphics)
-    brain = ga.run(start_pos, start_a, iterations=iterations, individuals=ga_individuals,
-                   generations=ga_generations)
-    brain = brain[0]
-    evol_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
-    fitnesses.append(evol_score)
-
-    brain = actual.get_brain()
-    pred_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, light)
-    fitnesses.append(pred_score)
-    fitnesses.sort()
-
-    plt.title('Benchmark test for network predicted vehicle with evolved control and %d random brain vehicles' %
-              random_brains)
-    evol_idx = np.where(fitnesses == evol_score)
-    pred_idx = np.where(fitnesses == pred_score)
-    plt.scatter(range(0, len(fitnesses)), fitnesses, s=1, c='grey', label='random')
-    plt.scatter(evol_idx, evol_score, s=15, c='green', label='evolved')
-    plt.scatter(pred_idx, pred_score, s=20, c='red', label='predicted')
-    plt.plot([0, len(fitnesses)], [random_mean_fit, random_mean_fit], c='blue', label='random mean fitness')
-    plt.xlabel('individuals')
-    plt.ylabel('fitness')
-    plt.legend()
-    plt.show()
-
-    return pred_score > random_mean_fit  # return whether the predicted brain fitness is better than chance
-
-
 class Cycles:
 
     def __init__(self, light_pos, type=None, net_filename=None):
 
         self.net = None  # NARX network
         self.net_filename = net_filename
+
+        # network training
+        self.training_runs, self.training_time = None, None
+        self.random_movements, self.after_ga_movements = None, None
+
         if type == 'skmlp':
             self.net = narx.load_narx_mlp(net_filename)
         if net_filename is not None:
@@ -127,6 +86,8 @@ class Cycles:
             saved_net = narx.load_pyrenn(net_filename)
             self.net = PyrennNarx()
             self.net.set_net(saved_net)
+            self.training_runs = int(re.search('\d+', re.search('r\d+', net_filename).group(0)).group(0))
+            self.training_time = int(re.search('\d+', re.search('t\d+', net_filename).group(0)).group(0))
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time() - start_time)
 
         self.random_vehicle = None
@@ -141,6 +102,10 @@ class Cycles:
         if light_pos is None:
             light_pos = [1100, 600]
         self.light = Light(light_pos)
+
+
+
+        self.actual_vehicle = None
 
         self.count_cycles = 0
 
@@ -208,8 +173,72 @@ class Cycles:
 
             return sum(msel) + sum(mser)
 
+    def random_brain_benchmark(self, random_brains=1000, ga_graphics=True):
+        """
+        Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains
+        :param random_brains: number of random brains to run to get a good benchmark curve
+        :param ga_graphics: set to True to show online GA and
+        :return:
+        """
+        start_pos, start_a = self.random_vehicle.pos[-1], self.random_vehicle.angle
+        iterations = self.after_ga_movements
+        fitnesses = []
+
+        print '\nStarting benchmark test for %d random brains...' % random_brains
+        start_time = time.time()
+        for individual in range(0, random_brains):
+            brain = Genetic.make_random_brain()
+            fitnesses.append(Genetic.get_fitness(start_pos, start_a, brain, iterations, self.light))
+        print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
+        random_mean_fit = np.mean(fitnesses)
+
+        ga = GA(self.light, ga_graphics)
+        brain = ga.run(start_pos, start_a, self.ga_individuals, self.ga_generations, iterations)
+        brain = brain[0]
+        evolved_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, self.light)
+        fitnesses.append(evolved_score)
+
+        brain = self.actual_vehicle.get_brain()
+        predicted_score = Genetic.get_fitness(start_pos, start_a, brain, iterations, self.light)
+        fitnesses.append(predicted_score)
+        fitnesses.sort()
+
+        plt.figure(1)
+        plt.suptitle('Benchmark test for fitness of agents and time comparison between online and offline')
+        plt.subplot(121)
+
+        plt.title('Benchmark test for network predicted vehicle\n with evolved control and %d random brain vehicles' %
+                  random_brains)
+        evol_idx = np.where(fitnesses == evolved_score)
+        pred_idx = np.where(fitnesses == predicted_score)
+        plt.scatter(range(0, len(fitnesses)), fitnesses, s=1, c='grey', label='random')
+        plt.scatter(evol_idx, evolved_score, s=15, c='green', label='evolved')
+        plt.scatter(pred_idx, predicted_score, s=20, c='red', label='predicted')
+        plt.plot([0, len(fitnesses)], [random_mean_fit, random_mean_fit], c='blue', label='random mean fitness')
+        plt.xlabel('individuals')
+        plt.ylabel('fitness')
+        plt.legend()
+
+        plt.subplot(122)
+        ga_time = self.random_movements + self.ga_individuals * self.ga_generations * iterations
+        pred_time = self.training_runs * self.training_time + self.random_movements + self.after_ga_movements
+        plt.title('Time comparison between online and offline GA\n and their fitness')
+        plt.scatter(ga_time, evolved_score, s=40, c='green', label='real-world: ' + str(ga_time))
+        plt.scatter(pred_time, predicted_score, s=40, c='red', label='predicted: ' + str(pred_time))
+        plt.xlabel('time steps')
+        plt.ylabel('fitness')
+        plt.legend()
+        plt.show()
+
+        print 'Predicted time: %d\nReal-world time: %d' % (pred_time, ga_time)
+        benchmark_test = predicted_score > random_mean_fit  # test if the predicted fitness is better than chance
+        time_test = pred_time < ga_time  # test if the predicted time is smaller than real-world time
+
+        return benchmark_test, time_test
+
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True,
                       seed=None, backward_chance=0, gamma=0.3, graphics=False):
+        self.training_runs, self.training_time = learning_runs, learning_time
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
@@ -256,7 +285,7 @@ class Cycles:
 
         print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
 
-    def test_network(self, tests=200, test_time=200, seed=1):
+    def test_network(self, tests=100, test_time=200, seed=1):
         """ Function that tests a network's error on many random tests
         :param tests: number of tests to run (100-200 takes the right amount of time)
         :param test_time: usually around 100-200 (should be the same as network has been trained on)
@@ -285,6 +314,7 @@ class Cycles:
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
+        self.random_movements = random_movements
         # Create vehicle in simulation
         self.sim = Simulator(self.light)
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
@@ -361,13 +391,14 @@ class Cycles:
     def wake_testing(self, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
+        self.after_ga_movements = iterations
         new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
         new_vehicle.set_values(self.brain)
         new_vehicle.random_movement = self.random_vehicle.pos
         new_vehicle.predicted_movement = self.predicted_pos
 
-        actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',
-                                                 vehicle=new_vehicle)
+        self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',
+                                                      vehicle=new_vehicle)
 
         # get positional information of vehicle and compare with predicted
         plt.figure(1)
@@ -376,7 +407,7 @@ class Cycles:
         plt.title('Predicted vs actual movement in space')
         plt.xlabel('x coordinate')
         plt.ylabel('y coordinate')
-        actual_move = np.transpose(actual_vehicle.pos)
+        actual_move = np.transpose(self.actual_vehicle.pos)
         pred_move = np.transpose(self.predicted_pos)
         plt.scatter(actual_move[0], actual_move[1], s=7, c='r', label='actual')
         plt.scatter(pred_move[0], pred_move[1], s=10, c='g', label='predicted')
@@ -395,9 +426,6 @@ class Cycles:
         plt.show()
 
         if benchmark:
-            passed_test = random_brain_benchmark(actual_vehicle, random_brains=1000, iterations=iterations,
-                                                 start_pos=self.random_vehicle.pos[-1],
-                                                 start_a=self.random_vehicle.angle, light=self.light,
-                                                 ga_individuals=self.ga_individuals, ga_generations=self.ga_generations,
-                                                 graphics=True)
-            print 'Predicted vehicle passed test: ' + str(passed_test)
+            passed_tests = self.random_brain_benchmark()
+            print 'Predicted vehicle tests:\n\tRandom benchmark: %s\n\tOnline time: %s'\
+                  % (passed_tests[0], passed_tests[1])
