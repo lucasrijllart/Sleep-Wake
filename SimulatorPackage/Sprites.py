@@ -136,16 +136,16 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.light = light
         self.gamma = gamma
         self.dt = dt
-        # velocity for left and right wheels
-        self.wheel_l, self.wheel_r = 0, 0
-        self.pos = [start_pos]  # xy position of vehicle
-        self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         if forward is True:
             self.mean = 2
             self.bias = 0.2
         else:
             self.mean = -2
             self.bias = -0.2
+        # velocity for left and right wheels
+        self.wheel_l, self.wheel_r = 0, 0
+        self.pos = [start_pos]  # xy position of vehicle
+        self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
 
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
@@ -162,7 +162,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         get_sensors(self, t)
 
         # calculate motor intensity
-        if random.random() > 0.5:
+        if random.random() < 0.5:
             self.wheel_l, self.wheel_r = [self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias,
                                           self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias]
         self.motor_left.append(self.wheel_l)

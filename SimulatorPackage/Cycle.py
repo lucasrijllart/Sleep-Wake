@@ -208,8 +208,8 @@ class Cycles:
 
             return sum(msel) + sum(mser)
 
-    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, gamma=0.3, use_mean=True,
-                      seed=None, backward_chance=0, graphics=False):
+    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True,
+                      seed=None, backward_chance=0, gamma=0.3, graphics=False):
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
@@ -256,18 +256,32 @@ class Cycles:
 
         print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
 
-    def test_network(self, tests=100, test_time=200, seed=None):
+    def test_network(self, tests=200, test_time=200, seed=1):
+        """ Function that tests a network's error on many random tests
+        :param tests: number of tests to run (100-200 takes the right amount of time)
+        :param test_time: usually around 100-200 (should be the same as network has been trained on)
+        :param seed: makes all test vehicles the same random set for every network tested
+        :return: nothing
+        """
         print '\nTesting network %s for %d times...' % (self.net_filename, tests)
         if seed is not None:
             random.seed(seed)
-        combined_error = 0
+        combined_error = []
         for it in range(0, tests):
             if it % 10 == 0:
                 print '\rTest %d/%d' % (it, tests),
-            combined_error += self.show_error_graph(test_time, graphics=False)
-        combined_error /= tests
+            combined_error.append(self.show_error_graph(test_time, graphics=False))
+        combined_error_mean = sum(combined_error) / tests
+        print '\rFinished network test. Average error: %s' % combined_error_mean
 
-        print '\rFinished network test. Average error: %s' % combined_error
+        plt.title('Testing network %s for %d tests of %d timesteps.\nAverage error:%s' %
+                  (self.net_filename, tests, test_time, combined_error_mean))
+        plt.scatter(range(0, len(combined_error)), np.sort(combined_error), s=5, label='test error')
+        plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], label='mean error')
+        plt.xlabel('test number')
+        plt.ylabel('Sum of MSE of both sensors')
+        plt.legend()
+        plt.show()
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
