@@ -99,7 +99,7 @@ class GA:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -0:  # make it -self.genome_scale for wrapping around backwards movement
+                if ind[i] < 0:  # make it -self.genome_scale for wrapping around backwards movement
                     ind[i] = self.genome_scale - (-0 - ind[i])
         return ind
 
@@ -129,11 +129,12 @@ class GA:
             sensor_left = sensor_log[0]
             sensor_right = sensor_log[1]
 
-            # sim = Simulator()
-            # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+            # sim = Simulator(self.light)
+            # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a, self.light)
             # wheel_log1 = np.copy(wheel_log)
             # vehicle.set_wheels(wheel_log)
             # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+
             fitness = np.mean(sensor_left) + np.mean(sensor_right)
             return fitness
 

@@ -6,6 +6,7 @@ import Narx as narx
 import matplotlib.pyplot as plt
 import Genetic
 from Genetic import GA as GA
+import Sprites
 from Sprites import *
 import os.path
 
@@ -57,14 +58,14 @@ class Cycles:
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time() - start_time)
 
         self.random_vehicle = None
-        self.brain = [0, 0, 0, 0, 0, 0]  # Vehicle brain assigned after GA, 6 weights
+        self.brain = None  # Vehicle brain assigned after GA, 6 weights
         self.vehicle_first_move = None
         self.predicted_pos = None
 
         self.ga_individuals = None
         self.ga_generations = None
 
-        self.required_distance_from_light = 400
+        self.required_distance_from_light = 500
 
         self.sim = None
         if light_pos is None:
@@ -82,8 +83,8 @@ class Cycles:
         """
         dist_to_light, rand_x, rand_y = 0, 0, 0
         while dist_to_light < self.required_distance_from_light:
-            rand_x = random.randint(RandomMotorVehicle.radius, Simulator.window_width)
-            rand_y = random.randint(RandomMotorVehicle.radius, Simulator.window_height)
+            rand_x = random.randint(RandomMotorVehicle.radius*2, Simulator.window_width-RandomMotorVehicle.radius*2)
+            rand_y = random.randint(RandomMotorVehicle.radius*2, Simulator.window_height-RandomMotorVehicle.radius*2)
             dist_to_light = np.sqrt((rand_x - self.light.pos[0]) ** 2 + (rand_y - self.light.pos[1]) ** 2)
         return [rand_x, rand_y], random.randint(0, 360)
 
@@ -99,18 +100,20 @@ class Cycles:
         :param seed: seed to make the collection of data identically random
         :return: data collected and pre-processed
         """
-        if rand_vehicle_pos:  # needs to be further than 500
-            vehicle_pos, vehicle_angle = self.find_random_pos()
-        else:
-            vehicle_pos = [900, 600]
-            vehicle_angle = 200
+
         if seed is not None:
             random.seed(seed)
-
         data = []
         sim = Simulator(self.light)
         for run in range(0, runs):
-            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=True)
+            # get new random position
+            if rand_vehicle_pos:  # needs to be further than 500
+                vehicle_pos, vehicle_angle = self.find_random_pos()
+            else:
+                vehicle_pos = [300, 300]
+                vehicle_angle = 200
+            # run simulation
+            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False, brain=self.brain)
             vehicle_data_in_t = []
             for t in range(0, iterations):
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -343,13 +346,12 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
-        print self.vehicle_first_move
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         self.ga_individuals = individuals
         self.ga_generations = generations
         # run GA and find best brain to give to testing
-        ga = GA(self.light, graphics=True)
+        ga = GA(self.light, graphics=False)
         ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead,
                                    veh_pos=self.random_vehicle.pos[-1],
                                    veh_angle=self.random_vehicle.angle, individuals=individuals,
@@ -452,7 +454,6 @@ class Cycles:
             last_pos = last_wake_vehicle.pos[-1]
             last_angle = last_wake_vehicle.angle
 
-
     def format_movement_data(self, vehicle):
         steps = len(vehicle.motor_left)
         vehicle_move = [[vehicle.motor_left[0], vehicle.motor_right[0],
@@ -464,11 +465,6 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
         return np.transpose(np.array(vehicle_latest_move))
-
-
-
-
-
 
     def wake_testing(self, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
@@ -509,3 +505,21 @@ class Cycles:
 
         if benchmark:
             self.benchmark_tests()
+
+    def retrain_with_brain(self):
+        print 'Got brain: ' + str(self.brain)
+        Sprites.world_brain = self.brain
+        self.train_network('pyrenn', 30, 200, [4, 20, 20, 2], 30, 20, graphics=False)
+
+    def assign_testing_as_initial(self):
+        vehicle_move = [[self.actual_vehicle.motor_left[0], self.actual_vehicle.motor_right[0],
+                         self.actual_vehicle.sensor_left[0], self.actual_vehicle.sensor_right[0]]]
+        for t in range(1, len(self.actual_vehicle.motor_left)):
+            vehicle_move.append([self.actual_vehicle.motor_left[t], self.actual_vehicle.motor_right[t],
+                                 self.actual_vehicle.sensor_left[t], self.actual_vehicle.sensor_right[t]])
+        vehicle_first_move = []
+        for t in range(0, len(vehicle_move)):
+            vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
+        self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
+        self.random_vehicle.pos = self.actual_vehicle.pos
+        self.random_vehicle.angle = self.actual_vehicle.angle

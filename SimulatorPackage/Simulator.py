@@ -112,8 +112,7 @@ class Simulator:
         if veh_pos is None:
             veh_pos = [300, 300]
         if brain is not None:
-            vehicle = BrainVehicle(veh_pos, veh_angle, self.light)
-            vehicle.set_values(brain)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
 
