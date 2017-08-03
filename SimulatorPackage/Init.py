@@ -33,13 +33,13 @@ wake_test_iter = 200
 
 # Booleans for running
 train_network = False
-error_graph = False
+error_graph = True
 test_network = False
 
 # Cycle running
 run_cycles = False
 
-sleep_wake = True
+sleep_wake = False
 cycles = 3
 
 
