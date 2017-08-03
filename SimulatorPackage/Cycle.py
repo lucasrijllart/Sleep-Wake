@@ -99,17 +99,18 @@ class Cycles:
         :param seed: seed to make the collection of data identically random
         :return: data collected and pre-processed
         """
-        if rand_vehicle_pos:  # needs to be further than 500
-            vehicle_pos, vehicle_angle = self.find_random_pos()
-        else:
-            vehicle_pos = [900, 600]
-            vehicle_angle = 200
+
         if seed is not None:
             random.seed(seed)
 
         data = []
         sim = Simulator(self.light)
         for run in range(0, runs):
+            if rand_vehicle_pos:  # needs to be further than 500
+                vehicle_pos, vehicle_angle = self.find_random_pos()
+            else:
+                vehicle_pos = [900, 600]
+                vehicle_angle = 200
             v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=True)
             vehicle_data_in_t = []
             for t in range(0, iterations):
@@ -405,12 +406,11 @@ class Cycles:
         plt.show()
 
     def sleep_wake(self, random_movements=50, cycles=2,  look_ahead=100, individuals=25, generations=10):
-
+        brains = []
         # Perform the initial random movement, first wake phase
         self.wake_learning(random_movements)
 
-
-        past_movements = self.format_movement_data(self.random_vehicle)
+        past_sensor_motor = self.format_movement_data(self.random_vehicle)
         # set the individuals and the generations
         # for the ga of every cycle
         # TODO: This variables could decrease over time when getting closer and closer to the light
@@ -418,7 +418,7 @@ class Cycles:
         self.ga_generations = generations
 
         # intialize vehicle position , movement and angle
-        last_move = self.vehicle_first_move
+        past_pos = self.random_vehicle.pos
         last_pos = self.random_vehicle.pos[-1]
         last_angle = self.random_vehicle.angle
 
@@ -428,27 +428,35 @@ class Cycles:
 
             # SLEEP NOW
             # run GA and find best brain to give to testing
-            ga_result = ga.run_offline(self.net, last_move, look_ahead,
+            ga_result = ga.run_offline(self.net, past_sensor_motor, look_ahead,
                                        veh_pos=last_pos,
                                        veh_angle=last_angle, individuals=individuals,
                                        generations=generations, crossover_rate=0.6, mutation_rate=0.3)
             self.brain = ga_result[0]
-            predicted_sensors = ga_result[1]
-            print predicted_sensors
+
+            # add on top of the old brain
+            brains.append(self.brain)
+            self.net.set_brains(brains)
+            _predicted_sensors = ga_result[1]
+
             predicted_wheels = ga_result[2]
 
             # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
-            ga_prediction_vehicle = ControllableVehicle(last_pos, last_angle, self.light)
-            ga_prediction_vehicle.set_wheels(predicted_wheels)
-            ga_prediction_vehicle.random_movement = self.random_vehicle.pos
+            ga_prediction_vehicle = BrainVehicle(last_pos, last_angle, self.light)
+            ga_prediction_vehicle.set_values(self.brain)
+            ga_prediction_vehicle.set_brains(brains)
+            ga_prediction_vehicle.random_movement = past_pos
             steps = len(predicted_wheels)
             # WAKE UP AND ACT
             last_wake_vehicle = self.sim.run_simulation(steps, graphics=True, cycle='sleep',
                                                             vehicle=ga_prediction_vehicle)
+            # TODO: Train a new model when brain incorporation works
+            # self.collect_random_data(True, runs=2, data_collection_graphics=True)
 
             # update parameters from where the vehicle stopped
-            last_move = self.format_movement_data(last_wake_vehicle)
-            past_movements = np.concatenate((past_movements, last_move), axis=1)
+            last_sensor_motor = self.format_movement_data(last_wake_vehicle)
+            past_sensor_motor = np.concatenate((past_sensor_motor, last_sensor_motor), axis=1)
+            past_pos.extend(last_wake_vehicle.pos)
             last_pos = last_wake_vehicle.pos[-1]
             last_angle = last_wake_vehicle.angle
 
@@ -464,10 +472,6 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
         return np.transpose(np.array(vehicle_latest_move))
-
-
-
-
 
 
     def wake_testing(self, iterations, benchmark=True):

@@ -50,14 +50,18 @@ def update_graphics(vehicle):
     vehicle.rect.center = previous_center
 
 
-def run_through_brain(prediction, ind):
+def run_through_brain(prediction, brains):
     """ Gets wheel data by passing predictions through brain """
-    if len(ind) == 6:
-        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
-                            (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
-    else:
-        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]),
-                            (prediction[1] * ind[2]) + (prediction[0] * ind[1])]
+    wheel_l, wheel_r = 0, 0
+    for brain in brains:
+        if len(brain) == 6:
+            wheel_l += (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant
+            wheel_r += (prediction[1] * brain[2]) + (prediction[0] * brain[1]) + brain[5] / BrainVehicle.bias_constant
+        else:
+            wheel_l += (prediction[0] * brain[0]) + (prediction[1] * brain[3])
+            wheel_r += (prediction[1] * brain[2]) + (prediction[0] * brain[1])
+    wheel_l /= len(brains)
+    wheel_r /= len(brains)
     return [wheel_l, wheel_r]
 
 
@@ -246,6 +250,8 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.motor_right = [0.0]
         get_sensors(self, 0)
 
+        self.brains_list = []
+
     def set_values(self, ll_lr_rr_rl_bl_br):
         if len(ll_lr_rr_rl_bl_br) >= 4:
             self.w_ll = ll_lr_rr_rl_bl_br[0]
@@ -255,6 +261,9 @@ class BrainVehicle(pygame.sprite.Sprite):
             if len(ll_lr_rr_rl_bl_br) > 4:
                 self.bias_l = ll_lr_rr_rl_bl_br[4]
                 self.bias_r = ll_lr_rr_rl_bl_br[5]
+
+    def set_brains(self, brains):
+        self.brains_list = brains
 
     def get_brain(self):  # returns the brain with 4 or 6 genes
         if self.bias_l is None and self.bias_r is None:
@@ -272,7 +281,9 @@ class BrainVehicle(pygame.sprite.Sprite):
         sensor_r = self.sensor_right[-1]
 
         # calculate motor intensity
-        self.wheel_l, self.wheel_r = run_through_brain([sensor_l, sensor_r], self.get_brain())
+        # TODO: The brain needs to be in a list
+
+        self.wheel_l, self.wheel_r = run_through_brain([sensor_l, sensor_r], self.brains_list)
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
 

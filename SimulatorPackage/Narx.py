@@ -23,6 +23,7 @@ class PyrennNarx:
         self.delay = delay
         self.past_data = []
         self.net = pr.CreateNN(self.layers)
+        self.brains_list = []
 
     def set_past_data(self, past_data):
         self.past_data = past_data
@@ -40,6 +41,9 @@ class PyrennNarx:
 
     def getNet(self):
         return self.net
+
+    def set_brains(self, brains):
+        self.brains_list = brains
 
     def train(self, training_data, max_iter=200, verbose=False, use_mean=True):
         input_matrices = []
@@ -185,7 +189,14 @@ class PyrennNarx:
         sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
         # 3. feed it to the brain to get motor information
-        wheel_log.append(run_through_brain(prediction, ind))
+        # TODO: the individual(brain) need to be in a list even if its one
+        temp = []
+        if not self.brains_list:
+            temp = [ind]
+        else:
+            [temp.append(brain) for brain in self.brains_list]
+            temp.append(ind)
+        wheel_log.append(run_through_brain(prediction, temp))
 
         # 4. add this set of data to the input of the prediction
         next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
@@ -198,7 +209,13 @@ class PyrennNarx:
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
             # 3. feed it to the brain to get motor information
-            wheel_log.append(run_through_brain(prediction, ind))
+            # TODO: Same here as above
+            if not self.brains_list:
+                temp = [ind]
+            else:
+                [temp.append(brain) for brain in self.brains_list]
+                temp.append(ind)
+            wheel_log.append(run_through_brain(prediction, temp))
 
             # 4. append previous step to the full data
             self.update_past_data(next_input)

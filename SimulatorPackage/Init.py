@@ -6,9 +6,9 @@ light_pos = [1100, 600]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 1
-learning_time = 1500
-layers = [4, 20, 40, 20, 2]  # [input, layer1, layer2, output] don't change in/out
+learning_runs = 2
+learning_time = 2500
+layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 40
 max_epochs = 20
 use_mean = False
@@ -17,14 +17,14 @@ train_seed = None
 
 # Error graph
 testing_time = 200  # has to me predict_after + delays + 1
-predict_after = 20
+predict_after = 40
 brain = [-1, 10, -1, 10, 10, 10]
 
 # Wake learning (can be less than delay)
-initial_random_movement = 25
+initial_random_movement = 40
 
 # Sleep
-look_ahead = 30 # this is the same look ahead for the sleep_wake phase
+look_ahead = 40 # this is the same look ahead for the sleep_wake phase
 individuals = 10
 generations = 20
 
@@ -40,13 +40,13 @@ test_network = False
 run_cycles = False
 
 sleep_wake = True
-cycles = 2
+cycles = 3
 
 
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r100t100d40e500')
+    cycle = Cycles(light_pos, net_filename='narx/r2t2500d40e20')
 else:
     cycle = Cycles(light_pos)
 
