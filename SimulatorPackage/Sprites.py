@@ -222,8 +222,8 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
             wheels = run_through_brain([sensor_l, sensor_r], world_brain)
             w_l_2 = wheels[0]
             w_r_2 = wheels[1]
-            w_l_1 = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
-            w_r_1 = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+            w_l_1 = w_l_2 + self.gamma * (-w_l_2 + random.normalvariate(self.mean, 4)) + self.bias
+            w_r_1 = w_r_2 + self.gamma * (-w_r_2 + random.normalvariate(self.mean, 4)) + self.bias
             self.wheel_l = (w_l_1 + w_l_2)/2
             self.wheel_r = (w_r_1 + w_r_2)/2
 

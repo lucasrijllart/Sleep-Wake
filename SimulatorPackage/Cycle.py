@@ -322,8 +322,8 @@ class Cycles:
 
         plt.title('Testing network %s for %d tests of %d timesteps.\nAverage error:%s' %
                   (self.net_filename, tests, test_time, combined_error_mean))
-        plt.scatter(range(0, len(combined_error)), np.sort(combined_error), s=5, label='test error')
-        plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], label='mean error')
+        plt.scatter(range(0, len(combined_error)), np.sort(combined_error), s=2, label='test error')
+        plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], c='black', label='mean error')
         plt.xlabel('test number')
         plt.ylabel('Sum of MSE of both sensors')
         plt.legend()
@@ -494,6 +494,7 @@ class Cycles:
         plt.legend()
 
         plt.subplot(122)
+        # TODO: fix this so that it can have a lookahead bigger than wake test iter
         plt.title('Movement prediction error')
         plt.xlabel('iterations')
         plt.ylabel('mean squared error')
@@ -509,7 +510,7 @@ class Cycles:
     def retrain_with_brain(self):
         print 'Got brain: ' + str(self.brain)
         Sprites.world_brain = self.brain
-        self.train_network('pyrenn', 30, 200, [4, 20, 20, 2], 30, 20, graphics=False)
+        self.train_network('pyrenn', 50, 100, [4, 20, 20, 2], 20, 20, graphics=False)
 
     def assign_testing_as_initial(self):
         vehicle_move = [[self.actual_vehicle.motor_left[0], self.actual_vehicle.motor_right[0],
@@ -521,5 +522,5 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
-        self.random_vehicle.pos = self.actual_vehicle.pos
+        [self.random_vehicle.pos.append(pos) for pos in self.actual_vehicle.pos]
         self.random_vehicle.angle = self.actual_vehicle.angle
