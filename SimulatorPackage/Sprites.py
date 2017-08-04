@@ -11,6 +11,8 @@ image_size = 100.0
 all_sprites_radius = 25.0
 # ratio of image for transformation (diameter / image size)
 image_ratio = (all_sprites_radius * 2) / image_size
+# World brain is a list of brains
+world_brains = []
 
 
 def get_sensors(v, time):
@@ -206,6 +208,18 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
                 self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
                 self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
                 self.moves_left -= 1
+
+
+        if world_brains:
+            # devide by the brains plus the random one
+            no_of_brains = len(world_brains) + 1
+            sensor_l = self.sensor_left[-1]
+            sensor_r = self.sensor_right[-1]
+            wheels = run_through_brain([sensor_l, sensor_r], world_brains)
+            rand_wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+            rand_wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+            self.wheel_l = (wheels[0] + rand_wheel_l)/no_of_brains
+            self.wheel_r = (wheels[1] + rand_wheel_r)/no_of_brains
 
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)

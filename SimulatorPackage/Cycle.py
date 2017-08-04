@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import Genetic
 from Genetic import GA as GA
 from Sprites import *
+import Sprites
 import os.path
 
 
@@ -425,7 +426,6 @@ class Cycles:
         ga = GA(self.light, graphics=False)
 
         for _ in range(0, cycles):
-
             # SLEEP NOW
             # run GA and find best brain to give to testing
             ga_result = ga.run_offline(self.net, past_sensor_motor, look_ahead,
@@ -450,8 +450,12 @@ class Cycles:
             # WAKE UP AND ACT
             last_wake_vehicle = self.sim.run_simulation(steps, graphics=True, cycle='sleep',
                                                             vehicle=ga_prediction_vehicle)
+
+            #self.benchmark_tests(random_brains=1000, ga_graphics=True)
             # TODO: Train a new model when brain incorporation works
-            # self.collect_random_data(True, runs=2, data_collection_graphics=True)
+            Sprites.world_brains = brains
+            self.train_network('pyrenn', 30, 200, [4, 20, 20, 2], 30, 30, graphics=False)
+
 
             # update parameters from where the vehicle stopped
             last_sensor_motor = self.format_movement_data(last_wake_vehicle)

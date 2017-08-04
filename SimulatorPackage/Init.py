@@ -24,7 +24,7 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 40 # this is the same look ahead for the sleep_wake phase
+look_ahead = 80 # this is the same look ahead for the sleep_wake phase
 individuals = 10
 generations = 20
 
@@ -33,13 +33,13 @@ wake_test_iter = 200
 
 # Booleans for running
 train_network = False
-error_graph = True
+error_graph = False
 test_network = False
 
 # Cycle running
 run_cycles = False
 
-sleep_wake = False
+sleep_wake = True
 cycles = 3
 
 
