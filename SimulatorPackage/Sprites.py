@@ -55,6 +55,7 @@ def update_graphics(vehicle):
 def run_through_brain(prediction, brains):
     """ Gets wheel data by passing predictions through brain """
     wheel_l, wheel_r = 0, 0
+    no_of_brains = len(brains)
     for brain in brains:
         if len(brain) == 6:
             wheel_l += (prediction[0] * brain[0]) + (prediction[1] * brain[3]) + brain[4] / BrainVehicle.bias_constant
@@ -62,8 +63,8 @@ def run_through_brain(prediction, brains):
         else:
             wheel_l += (prediction[0] * brain[0]) + (prediction[1] * brain[3])
             wheel_r += (prediction[1] * brain[2]) + (prediction[0] * brain[1])
-    wheel_l /= len(brains)
-    wheel_r /= len(brains)
+    wheel_l /= no_of_brains
+    wheel_r /= no_of_brains
     return [wheel_l, wheel_r]
 
 

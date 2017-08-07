@@ -40,7 +40,7 @@ test_network = False
 run_cycles = False
 
 sleep_wake = True
-cycles = 3
+cycles = 2
 
 
 

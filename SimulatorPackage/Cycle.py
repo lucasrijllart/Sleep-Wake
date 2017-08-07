@@ -453,9 +453,13 @@ class Cycles:
 
             #self.benchmark_tests(random_brains=1000, ga_graphics=True)
             # TODO: Train a new model when brain incorporation works
+            # set the brains for all sprites
             Sprites.world_brains = brains
-            self.train_network('pyrenn', 30, 200, [4, 20, 20, 2], 30, 30, graphics=False)
+            self.train_network('pyrenn', 2, 2000, [4, 20, 20, 2], 30, 5, graphics=False)
 
+            # do a wake test
+            self.wake_testing(steps, brains=brains, last_pos=last_pos, last_angle=last_angle, past_pos=past_pos
+                              , predicted_wheels=predicted_wheels)
 
             # update parameters from where the vehicle stopped
             last_sensor_motor = self.format_movement_data(last_wake_vehicle)
@@ -463,7 +467,6 @@ class Cycles:
             past_pos.extend(last_wake_vehicle.pos)
             last_pos = last_wake_vehicle.pos[-1]
             last_angle = last_wake_vehicle.angle
-
 
     def format_movement_data(self, vehicle):
         steps = len(vehicle.motor_left)
@@ -477,17 +480,34 @@ class Cycles:
             vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
         return np.transpose(np.array(vehicle_latest_move))
 
-
-    def wake_testing(self, iterations, benchmark=True):
+    def wake_testing(self, iterations, benchmark=False, brains=[], last_pos=None, last_angle=None,
+                     past_pos=None, predicted_wheels=None):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         self.after_ga_movements = iterations
-        new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
-        new_vehicle.set_values(self.brain)
-        new_vehicle.random_movement = self.random_vehicle.pos
-        new_vehicle.predicted_movement = self.predicted_pos
+        if last_angle is None and last_pos is None:
+            new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
+        else:
+            new_vehicle = BrainVehicle(last_pos, last_angle, self.light)
+        new_vehicle.set_brains(brains)
+        if past_pos is None:
+            new_vehicle.random_movement = self.random_vehicle.pos
+        else:
+            new_vehicle.random_movement = past_pos
 
-        self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',
+        # Run a controllable vehicle to
+        if predicted_wheels is not None:
+            ga_prediction_vehicle = ControllableVehicle(last_pos, last_angle, self.light)
+            ga_prediction_vehicle.set_wheels(predicted_wheels)
+            ga_prediction_vehicle.random_movement = past_pos
+            ga_prediction_vehicle = self.sim.run_simulation(iterations, graphics=True, cycle='sleep',
+                                                            vehicle=ga_prediction_vehicle)
+            new_vehicle.predicted_movement = ga_prediction_vehicle.pos
+            self.predicted_pos = ga_prediction_vehicle.pos
+        else:
+            new_vehicle.predicted_movement = self.predicted_pos
+
+        self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=False, cycle='wake (testing)',
                                                       vehicle=new_vehicle)
 
         # get positional information of vehicle and compare with predicted
