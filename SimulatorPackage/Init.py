@@ -6,9 +6,9 @@ light_pos = [Simulator.window_width/2, Simulator.window_height/2]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 100
+learning_runs = 50
 learning_time = 100
-layers = [4, 20, 40, 20, 2]  # [input, layer1, layer2, output] don't change in/out
+layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 20
 max_epochs = 50
 use_mean = False
@@ -24,9 +24,9 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 80  # this is the same look ahead for the sleep_wake phase
-individuals = 20
-generations = 20
+look_ahead = 30  # this is the same look ahead for the sleep_wake phase
+individuals = 30
+generations = 30
 
 # Wake testing
 wake_test_iter = 40
