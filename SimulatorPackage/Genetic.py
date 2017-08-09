@@ -50,6 +50,7 @@ class GA:
 
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
+        self.eval_fitness_data = None
         self.look_ahead = None
         self.offline = None
 
@@ -124,18 +125,20 @@ class GA:
         if self.offline is False:
             return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
-            sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
+            fitness = 0
+            for init_data in self.eval_fitness_data:
+                sensor_log, wheel_log = self.net.predict_ahead(init_data, brain, self.look_ahead)
 
-            sensor_left = sensor_log[0]
-            sensor_right = sensor_log[1]
+                sensor_left = sensor_log[0]
+                sensor_right = sensor_log[1]
 
-            # sim = Simulator()
-            # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
-            # wheel_log1 = np.copy(wheel_log)
-            # vehicle.set_wheels(wheel_log)
-            # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
-            fitness = np.mean(sensor_left) + np.mean(sensor_right)
-            return fitness
+                # sim = Simulator()
+                # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
+                # wheel_log1 = np.copy(wheel_log)
+                # vehicle.set_wheels(wheel_log)
+                # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+                fitness += np.mean(sensor_left) + np.mean(sensor_right)
+        return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
@@ -213,7 +216,7 @@ class GA:
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
-    def run_offline(self, narx, data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
+    def run_offline(self, narx, data, eval_fitness_data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
                     light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
@@ -231,6 +234,7 @@ class GA:
         self.offline = True
         self.individuals = individuals
         self.generations = generations
+        self.eval_fitness_data = eval_fitness_data
 
         print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals, generations, look_ahead)
         return self._start_ga(crossover_rate, mutation_rate)

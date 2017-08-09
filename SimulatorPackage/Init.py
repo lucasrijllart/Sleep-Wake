@@ -6,8 +6,8 @@ light_pos = [1100, 600]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 2
-learning_time = 2500
+learning_runs = 10
+learning_time = 200
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 40
 max_epochs = 20
@@ -40,6 +40,7 @@ test_network = False
 run_cycles = False
 
 sleep_wake = True
+
 cycles = 2
 
 
@@ -69,3 +70,6 @@ if run_cycles:
 
 if sleep_wake:
     cycle.sleep_wake(initial_random_movement, cycles, look_ahead, individuals, generations)
+# TODO: The random collected data should be slice into training data(The first part)
+# TODO: and then fitness_eval data the rest. The last position will be the one considered for the fitness
+# TODO: eval. as well. Hold on to the last possition to use in the next wake phase.

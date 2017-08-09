@@ -88,7 +88,7 @@ class Cycles:
             dist_to_light = np.sqrt((rand_x - self.light.pos[0]) ** 2 + (rand_y - self.light.pos[1]) ** 2)
         return [rand_x, rand_y], random.randint(0, 360)
 
-    def collect_random_data(self, rand_vehicle_pos=True, runs=10, iterations=1000, data_collection_graphics=False,
+    def collect_random_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
                             seed=None, gamma=0.3):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
@@ -106,17 +106,25 @@ class Cycles:
 
         data = []
         sim = Simulator(self.light)
+        # get new random position for initial starting position of vehicle
+        vehicle_pos, vehicle_angle = self.find_random_pos()
+
         for run in range(0, runs):
+
+            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False)
+
+            vehicle_data_in_t = []
             if rand_vehicle_pos:  # needs to be further than 500
                 vehicle_pos, vehicle_angle = self.find_random_pos()
             else:
-                vehicle_pos = [900, 600]
-                vehicle_angle = 200
-            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=True)
-            vehicle_data_in_t = []
+                vehicle_pos = v.pos[-1]
+                vehicle_angle = v.angle
+
             for t in range(0, iterations):
+
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
             data.append(vehicle_data_in_t)
+
         print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
         return pre_process_by_vehicle(data)
 
@@ -259,7 +267,7 @@ class Cycles:
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
-        train_input = self.collect_random_data(True, learning_runs, learning_time, graphics, seed)
+        train_input = self.collect_random_data(False, learning_runs, learning_time, graphics, seed)
 
         # creation of network
         print '\nNetwork training started at ' + str(
@@ -348,11 +356,13 @@ class Cycles:
         print self.vehicle_first_move
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
+        # Collect random data to use for fitness evaluation from different initial conditions
+        random_fitness_eval_data = self.collect_random_data(False, 5, 40, False)
         self.ga_individuals = individuals
         self.ga_generations = generations
         # run GA and find best brain to give to testing
         ga = GA(self.light, graphics=True)
-        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead,
+        ga_result = ga.run_offline(self.net, self.vehicle_first_move, random_fitness_eval_data, look_ahead,
                                    veh_pos=self.random_vehicle.pos[-1],
                                    veh_angle=self.random_vehicle.angle, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
@@ -426,12 +436,13 @@ class Cycles:
         ga = GA(self.light, graphics=False)
 
         for _ in range(0, cycles):
+            fitness_eval_data = self.collect_random_data(False, 5, 40, False)
             # SLEEP NOW
             # run GA and find best brain to give to testing
-            ga_result = ga.run_offline(self.net, past_sensor_motor, look_ahead,
+            ga_result = ga.run_offline(self.net, past_sensor_motor, fitness_eval_data, look_ahead,
                                        veh_pos=last_pos,
                                        veh_angle=last_angle, individuals=individuals,
-                                       generations=generations, crossover_rate=0.6, mutation_rate=0.3)
+                                       generations=generations, crossover_rate=0.6, mutation_rate=0.2)
             self.brain = ga_result[0]
 
             # add on top of the old brain
@@ -448,18 +459,17 @@ class Cycles:
             ga_prediction_vehicle.random_movement = past_pos
             steps = len(predicted_wheels)
             # WAKE UP AND ACT
+            # set the brains for all sprites
+            Sprites.world_brains = brains
             last_wake_vehicle = self.sim.run_simulation(steps, graphics=True, cycle='sleep',
                                                             vehicle=ga_prediction_vehicle)
 
             #self.benchmark_tests(random_brains=1000, ga_graphics=True)
-            # TODO: Train a new model when brain incorporation works
-            # set the brains for all sprites
-            Sprites.world_brains = brains
-            self.train_network('pyrenn', 2, 2000, [4, 20, 20, 2], 30, 5, graphics=False)
+            #self.train_network('pyrenn', 2, 2000, [4, 20, 20, 2], 30, 5, graphics=False)
 
             # do a wake test
-            self.wake_testing(steps, brains=brains, last_pos=last_pos, last_angle=last_angle, past_pos=past_pos
-                              , predicted_wheels=predicted_wheels)
+            # self.wake_testing(steps, brains=brains, last_pos=last_pos, last_angle=last_angle, past_pos=past_pos
+            #                   , predicted_wheels=predicted_wheels)
 
             # update parameters from where the vehicle stopped
             last_sensor_motor = self.format_movement_data(last_wake_vehicle)
@@ -507,6 +517,7 @@ class Cycles:
         else:
             new_vehicle.predicted_movement = self.predicted_pos
 
+        Sprites.world_brains = self.brain
         self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=False, cycle='wake (testing)',
                                                       vehicle=new_vehicle)
 
