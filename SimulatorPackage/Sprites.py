@@ -16,6 +16,12 @@ world_brain = None
 
 
 def get_sensors(v, time):
+    """
+    Gets the sensor position based on the vehicle's position and angle, then calculates the distance to the light and
+    adds the values to the vehicle's sensor logs
+    :param v: vehicle
+    :param time: timestep for finding the current bearing
+    """
     light_pos = v.light.pos
     # calculate left sensor position
     sl0 = (v.pos[time][0] - math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
@@ -34,6 +40,12 @@ def get_sensors(v, time):
 
 
 def update_position(vehicle, time):
+    """
+    Updates the position of a vehicle, getting its wheel velocity and angle. Adds the new position, bearing and angle to
+    the vehicle logs.
+    :param vehicle: vehicle to update
+    :param time: timestep for bearing
+    """
     vc = (vehicle.wheel_l + vehicle.wheel_r) / 2  # velocity center
     va = (vehicle.wheel_r - vehicle.wheel_l) / (2 * vehicle.radius)  # velocity average
 
@@ -45,6 +57,10 @@ def update_position(vehicle, time):
 
 
 def update_graphics(vehicle):
+    """
+    Rotates the image of the vehicle accordingly.
+    :param vehicle: vehicle to rotate
+    """
     previous_center = vehicle.pos[-1]
     degree = vehicle.bearing[-1] * 180 / math.pi
     vehicle.image = pygame.transform.rotozoom(vehicle.original, degree, image_ratio)
@@ -53,7 +69,12 @@ def update_graphics(vehicle):
 
 
 def run_through_brain(prediction, ind):
-    """ Gets wheel data by passing predictions through brain """
+    """
+    Gets the wheel velocity by feeding the predictions through the brain and returning the output.
+    :param prediction: array of 2 sensor values (numpy)
+    :param ind: array of the brain
+    :return: wheel velocity left and right
+    """
     if world_brain is None:
         local_world_brain = ind
     else:
@@ -75,11 +96,21 @@ def run_through_brain(prediction, ind):
 
 
 class ControllableVehicle(pygame.sprite.Sprite):
+    """
+    The controllable vehicle is a vehicle that gets passed a wheel log and acts what the wheels dictate. This is used
+    to print on the screen the predicted trajectory of the vehicle.
+    """
     # PyGame constants
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
     radius = all_sprites_radius  # radius of vehicle size
 
     def __init__(self, start_pos, start_angle, light):
+        """
+        Constructor for Controllable Vehicle.
+        :param start_pos: the vehicle's starting position (array of 2 int)
+        :param start_angle: the vehicle's starting angle
+        :param light: the light present in the environment
+        """
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating
@@ -138,6 +169,10 @@ class ControllableVehicle(pygame.sprite.Sprite):
 
 
 class RandomMotorVehicle(pygame.sprite.Sprite):
+    """
+    The random motor vehicle is used to go around randomly in the environment. From the collection of sensory and motor
+    values, we then use those to train a network.
+    """
     # PyGame constants
     image = pygame.image.load('images/vehicle.png')  # image of vehicle
     radius = all_sprites_radius
@@ -171,6 +206,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.wheel_l, self.wheel_r = 0, 0
         self.pos = [start_pos]  # xy position of vehicle
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
+        self.previous_pos = None
 
         # Stop-Start random movement vars
         self.start_stop = start_stop
@@ -235,6 +271,10 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 
 
 class BrainVehicle(pygame.sprite.Sprite):
+    """
+    The brain vehicle moves by getting its sensory information, passing it through its brain to get the wheel velocity,
+    then update the position with those.
+    """
     # PyGame constants
     image = pygame.image.load('images/attacker.png')  # image of vehicle
     radius = all_sprites_radius  # radius of vehicle size
@@ -307,10 +347,18 @@ class BrainVehicle(pygame.sprite.Sprite):
 
 
 class Light(pygame.sprite.Sprite):
+    """
+    The Light is a non-moving sprite that only has coordinates for calculating Euclidean distances and prints its image
+    on the screen.
+    """
     # PyGame constants
     image = pygame.image.load('images/light.png')
 
     def __init__(self, pos):
+        """
+        Constructor for the Light, only takes in the position.
+        :param pos: The position of the light (array of 2 int [x, y])
+        """
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.transform.rotozoom(self.image, 0, 0.5)
         self.rect = self.image.get_rect()

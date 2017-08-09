@@ -50,6 +50,7 @@ class GA:
 
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
+        self.test_data = None
         self.look_ahead = None
         self.offline = None
 
@@ -124,10 +125,13 @@ class GA:
         if self.offline is False:
             return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
-            sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
+            fitness = 0
+            for test_init in self.test_data:
 
-            sensor_left = sensor_log[0]
-            sensor_right = sensor_log[1]
+                sensor_log, wheel_log = self.net.predict_ahead(test_init, brain, self.look_ahead)
+
+                sensor_left = sensor_log[0]
+                sensor_right = sensor_log[1]
 
             # sim = Simulator(self.light)
             # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a, self.light)
@@ -135,7 +139,8 @@ class GA:
             # vehicle.set_wheels(wheel_log)
             # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
 
-            fitness = np.mean(sensor_left) + np.mean(sensor_right)
+                fitness += np.mean(sensor_left) + np.mean(sensor_right)
+            fitness /= len(self.test_data)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -214,7 +219,7 @@ class GA:
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
-    def run_offline(self, narx, data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
+    def run_offline(self, narx, data, test_data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
                     light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
         if light_pos is None:
             light_pos = [1100, 600]
@@ -224,6 +229,9 @@ class GA:
             veh_angle = random.randint(0, 360)
         self.net = narx
         self.data = data
+        if len(test_data) > 10:
+            test_data = test_data[:10]
+        self.test_data = test_data
         self.look_ahead = look_ahead
         self.start_x = veh_pos[0]
         self.start_y = veh_pos[1]

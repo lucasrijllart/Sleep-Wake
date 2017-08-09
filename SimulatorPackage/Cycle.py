@@ -45,6 +45,15 @@ class Cycles:
             self.training_time = int(re.search('\d+', re.search('t\d+', net_filename).group(0)).group(0))
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time() - start_time)
 
+        self.vehicle_training_data = None  # this data will hold all the vehicles that the network will train with
+        self.ga_test_data = None  # this data will hold all the vehicles that the GA will test the fitness from
+        self.init_pos = None  # first position of vehicle before random collection
+        self.init_angle = None  # first angle of vehicle before random collection
+        self.network_delay = None  # for show_error_graph() to know when the network is predicting on predictions
+        self.collection_vehicle_pos = []  # all pos of collection vehicle to pass to wakeTest vehicle to show on Sim
+        self.starting_pos_after_collect = None  # last position of vehicle after collection (passed to GA)
+        self.starting_ang_after_collect = None  # last angle of vehicle after collection (passed to GA)
+
         self.random_vehicle = None
         self.brain = None  # Vehicle brain assigned after GA, 6 weights
         self.vehicle_first_move = None
@@ -55,10 +64,10 @@ class Cycles:
 
         self.required_distance_from_light = 500
 
-        self.sim = None
         if light_pos is None:
             light_pos = [1100, 600]
         self.light = Light(light_pos)
+        self.sim = Simulator(self.light)
 
         self.actual_vehicle = None
 
@@ -77,14 +86,13 @@ class Cycles:
         return [rand_x, rand_y], random.randint(0, 360)
 
     def collect_random_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
-                            seed=None, gamma=0.3):
+                            seed=None):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
-        :param rand_vehicle_pos: if vehicle should spawn randomly
+        :param rand_vehicle_pos: if the second vehicle doesn't take the previous one's position
         :param runs: number of vehicle runs to execute
         :param iterations: number of iterations of a run
         :param data_collection_graphics: show the vehicles while collecting data
-        :param gamma:
         :param seed: seed to make the collection of data identically random
         :return: data collected and pre-processed
         """
@@ -93,12 +101,16 @@ class Cycles:
             random.seed(seed)
         data = []
         sim = Simulator(self.light)
+        v = None
         # get new random position for initial starting position of vehicle
         vehicle_pos, vehicle_angle = self.find_random_pos()
+        self.init_pos = vehicle_pos
+        self.init_angle = vehicle_angle
 
         for run in range(0, runs):  # run simulation for number of runs we have
             # run simulation
-            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False, brain=self.brain)
+            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle,
+                                     self.collection_vehicle_pos, brain=self.brain)
             vehicle_data_in_t = []
 
             # get new position
@@ -111,7 +123,10 @@ class Cycles:
             for t in range(0, iterations):
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
             data.append(vehicle_data_in_t)
+            self.collection_vehicle_pos.extend(v.pos)  # adds the pos to the previous pos
         print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
+        self.starting_pos_after_collect = v.pos[-1]  # keeps track of last position after collection
+        self.starting_ang_after_collect = v.angle  # keeps track of last angle after collection
         return pre_process_by_vehicle(data)
 
     def show_error_graph(self, testing_time=300, predict_after=50, brain=None, seed=None, graphics=True):
@@ -127,7 +142,11 @@ class Cycles:
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator(self.light)
         # find random starting pos
-        vehicle_pos, vehicle_angle = self.find_random_pos()
+        # vehicle_pos, vehicle_angle = self.find_random_pos()
+        # use initial position of training data
+        vehicle_pos = self.init_pos
+        vehicle_angle = self.init_angle
+
         # execute vehicle
         vehicle = sim.init_simulation(testing_time, graphics, veh_pos=vehicle_pos, veh_angle=vehicle_angle, brain=brain, start_stop=True)
         data = []
@@ -160,13 +179,24 @@ class Cycles:
                 i2 = np.array(range(predict_after, testing_time))
                 plt.subplot(221)
                 plt.title('Left sensor values')
-                plt.plot(i, vehicle.sensor_left, 'b', label='real')
-                plt.plot(i2, sensor_log[0], 'r', label='predicted')
+                pred_with_data = sensor_log[0][:self.network_delay]
+                i2_data = i2[:self.network_delay]
+                pred_on_pred = sensor_log[0][self.network_delay-1:]
+                i2_pred = i2[self.network_delay-1:]
+                plt.plot(i, vehicle.sensor_left, 'b', label='real vehicle values')
+                plt.plot(i2_data, pred_with_data, 'r', label='predictions with real data')
+                plt.plot(i2_pred, pred_on_pred, 'r--', label='predictions without real data')
+                plt.legend()
 
                 plt.subplot(222)
                 plt.title('Right sensor values')
-                plt.plot(i, vehicle.sensor_right, 'b', label='real')
-                plt.plot(i2, sensor_log[1], 'r', label='predicted')
+                pred_with_data = sensor_log[1][:self.network_delay]
+                i2_data = i2[:self.network_delay]
+                pred_on_pred = sensor_log[1][self.network_delay-1:]
+                i2_pred = i2[self.network_delay-1:]
+                plt.plot(i, vehicle.sensor_right, 'b', label='real vehicle values')
+                plt.plot(i2_data, pred_with_data, 'r', label='predictions with real data')
+                plt.plot(i2_pred, pred_on_pred, 'r--', label='predictions without real data')
                 plt.legend()
 
                 plt.subplot(223)
@@ -188,7 +218,7 @@ class Cycles:
         :param ga_graphics: set to True to show online GA and
         :return:
         """
-        start_pos, start_a = self.random_vehicle.pos[-1], self.random_vehicle.angle
+        start_pos, start_a = self.init_pos, self.init_angle
         iterations = self.after_ga_movements
         fitnesses = []
 
@@ -228,8 +258,8 @@ class Cycles:
         plt.legend()
 
         plt.subplot(122)
-        ga_time = self.random_movements + self.ga_individuals * self.ga_generations * iterations
-        pred_time = self.training_runs * self.training_time + self.random_movements + self.after_ga_movements
+        ga_time = len(self.collection_vehicle_pos) + self.ga_individuals * self.ga_generations * iterations
+        pred_time = self.training_runs * self.training_time + len(self.collection_vehicle_pos) + self.after_ga_movements
         plt.title('Time comparison between online and offline GA\n and their fitness')
         plt.scatter(ga_time, evolved_score, s=40, c='green', label='real-world: ' + str(ga_time))
         plt.scatter(pred_time, predicted_score, s=40, c='red', label='predicted: ' + str(pred_time))
@@ -249,11 +279,14 @@ class Cycles:
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True,
                       seed=None, graphics=False):
-        self.training_runs, self.training_time = learning_runs, learning_time
+        self.training_runs, self.training_time, self.network_delay = learning_runs, learning_time, delay
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
-        # collect data for NARX and testing and pre-process data
+        # collect data for NARX and testing and pre-process, separate into training and testing
         train_input = self.collect_random_data(False, learning_runs, learning_time, graphics, seed)
+        np.random.shuffle(train_input)
+        self.vehicle_training_data = train_input[:len(train_input)/2]
+        self.ga_test_data = train_input[len(train_input)/2:]
 
         # creation of network
         print '\nNetwork training started at ' + str(
@@ -327,7 +360,9 @@ class Cycles:
         self.random_movements = random_movements
         # Create vehicle in simulation
         self.sim = Simulator(self.light)
+        # give last position of training to vehicle pos
         vehicle_pos, vehicle_angle = self.find_random_pos()
+
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
                                                        veh_pos=vehicle_pos, veh_angle=vehicle_angle)
         vehicle_move = [[self.random_vehicle.motor_left[0], self.random_vehicle.motor_right[0],
@@ -345,18 +380,18 @@ class Cycles:
         self.ga_generations = generations
         # run GA and find best brain to give to testing
         ga = GA(self.light, graphics=False)
-        ga_result = ga.run_offline(self.net, self.vehicle_first_move, look_ahead,
-                                   veh_pos=self.random_vehicle.pos[-1],
-                                   veh_angle=self.random_vehicle.angle, individuals=individuals,
+        ga_result = ga.run_offline(self.net, self.ga_test_data[-1], self.ga_test_data, look_ahead,
+                                   veh_pos=self.starting_pos_after_collect,
+                                   veh_angle=self.starting_ang_after_collect, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
         self.brain = ga_result[0]
         predicted_sensors = ga_result[1]
         predicted_wheels = ga_result[2]
 
         # Create vehicle and pass it the wheel data, previous random movement, and then run. Get the pos data
-        ga_prediction_vehicle = ControllableVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
+        ga_prediction_vehicle = ControllableVehicle(self.starting_pos_after_collect, self.starting_ang_after_collect, self.light)
         ga_prediction_vehicle.set_wheels(predicted_wheels)
-        ga_prediction_vehicle.random_movement = self.random_vehicle.pos
+        ga_prediction_vehicle.random_movement = self.collection_vehicle_pos
         ga_prediction_vehicle = self.sim.run_simulation(len(predicted_wheels), graphics=True, cycle='sleep',
                                                         vehicle=ga_prediction_vehicle)
         self.predicted_pos = ga_prediction_vehicle.pos
@@ -403,7 +438,6 @@ class Cycles:
 
         # Perform the initial random movement, first wake phase
         self.wake_learning(random_movements)
-
 
         past_movements = self.format_movement_data(self.random_vehicle)
         # set the individuals and the generations
@@ -463,9 +497,9 @@ class Cycles:
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         self.after_ga_movements = iterations
-        new_vehicle = BrainVehicle(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.light)
+        new_vehicle = BrainVehicle(self.init_pos, self.init_angle, self.light)
         new_vehicle.set_values(self.brain)
-        new_vehicle.random_movement = self.random_vehicle.pos
+        new_vehicle.random_movement = self.collection_vehicle_pos
         new_vehicle.predicted_movement = self.predicted_pos
 
         self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',

@@ -33,6 +33,8 @@ def show_sensors_motors(screen, vehicle, my_font):
 
     if isinstance(vehicle, RandomMotorVehicle):  # random movement in blue
         [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+        if vehicle.previous_pos is not None:
+            [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_pos]
 
     if isinstance(vehicle, ControllableVehicle):  # random in blue, predicted in grey
         [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
@@ -107,17 +109,19 @@ class Simulator:
         pygame.display.quit()
 
     def quick_simulation(self, iteration, graphics=False, veh_pos=None, veh_angle=random.randint(0, 360),
-                         gamma=0.3, brain=None, start_stop=False):
+                         previous_pos=None, gamma=0.3, brain=None, start_stop=False):
         """ Runs a simulation then closes then window """
         if veh_pos is None:
             veh_pos = [300, 300]
         if brain is not None:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
+            vehicle.previous_pos = previous_pos
         else:
             vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, start_stop)
+            vehicle.previous_pos = previous_pos
 
         vehicle = self.run_simulation(iteration, graphics, vehicle)
-        self.close()
+        #self.close()
         return vehicle
 
     def init_simulation(self, iteration, graphics, cycle='', veh_pos=None, veh_angle=random.randint(0, 360),
