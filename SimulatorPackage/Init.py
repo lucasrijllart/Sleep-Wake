@@ -6,7 +6,7 @@ light_pos = [Simulator.window_width/2, Simulator.window_height/2]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 50
+learning_runs = 10
 learning_time = 100
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 20
@@ -32,13 +32,13 @@ generations = 30
 wake_test_iter = 40
 
 # Booleans for running
-train_network = False
+train_network = True
 error_graph = False
 test_network = False
 
 # Cycle running
 run_one_cycle = False
-run_cycles = True
+run_cycles = False
 
 sleep_wake = False
 cycles = 2
@@ -54,7 +54,7 @@ else:
 
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
-                        graphics=False)
+                        graphics=True)
 
 cycle.show_error_graph(testing_time, predict_after, brain=None, seed=None, graphics=True) if error_graph is True else None
 

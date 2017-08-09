@@ -11,18 +11,6 @@ from Sprites import *
 import os.path
 
 
-def pre_process_by_time(raw_data):
-    """ Creates two arrays of training inputs and targets to feed to the NARX network """
-    new_inputs = []
-    new_targets = []
-    for t in range(0, len(raw_data[0])):
-        for vehicle in range(0, len(raw_data)):
-            new_inputs.append(np.transpose(np.array(raw_data[vehicle][t])))
-            # extracting targets from data and adding to new list (transposed)
-            new_targets.append(np.transpose(np.array(raw_data[vehicle][t][-2:])))
-    return [np.transpose(np.array(new_inputs)), np.transpose(np.array(new_targets))]
-
-
 def pre_process_by_vehicle(raw_data):
     """ Returns the data in a list of vehicles. Every vehicle has a list of timesteps with each motors and sensors """
     new_inputs = []
@@ -88,7 +76,7 @@ class Cycles:
             dist_to_light = np.sqrt((rand_x - self.light.pos[0]) ** 2 + (rand_y - self.light.pos[1]) ** 2)
         return [rand_x, rand_y], random.randint(0, 360)
 
-    def collect_random_data(self, rand_vehicle_pos=True, runs=10, iterations=1000, data_collection_graphics=False,
+    def collect_random_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
                             seed=None, gamma=0.3):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
@@ -105,16 +93,21 @@ class Cycles:
             random.seed(seed)
         data = []
         sim = Simulator(self.light)
-        for run in range(0, runs):
-            # get new random position
-            if rand_vehicle_pos:  # needs to be further than 500
-                vehicle_pos, vehicle_angle = self.find_random_pos()
-            else:
-                vehicle_pos = [300, 300]
-                vehicle_angle = 200
+        # get new random position for initial starting position of vehicle
+        vehicle_pos, vehicle_angle = self.find_random_pos()
+
+        for run in range(0, runs):  # run simulation for number of runs we have
             # run simulation
             v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False, brain=self.brain)
             vehicle_data_in_t = []
+
+            # get new position
+            if rand_vehicle_pos:  # needs to be further than 500
+                vehicle_pos, vehicle_angle = self.find_random_pos()
+            else:
+                vehicle_pos = v.pos[-1]
+                vehicle_angle = v.angle
+
             for t in range(0, iterations):
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
             data.append(vehicle_data_in_t)
@@ -260,7 +253,7 @@ class Cycles:
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process data
-        train_input = self.collect_random_data(True, learning_runs, learning_time, graphics, seed)
+        train_input = self.collect_random_data(False, learning_runs, learning_time, graphics, seed)
 
         # creation of network
         print '\nNetwork training started at ' + str(
