@@ -6,11 +6,11 @@ light_pos = [Simulator.window_width/2, Simulator.window_height/2]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 200
+learning_runs = 50
 learning_time = 100
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 30
-max_epochs = 1
+max_epochs = 25
 use_mean = False
 train_seed = None
 
@@ -24,15 +24,15 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 60  # this is the same look ahead for the sleep_wake phase
-individuals = 40
+look_ahead = 80  # this is the same look ahead for the sleep_wake phase
+individuals = 30
 generations = 30
 
 # Wake testing
-wake_test_iter = 200
+wake_test_iter = 300
 
 # Booleans for running
-train_network = True
+train_network = False
 error_graph = True
 test_network = True
 
@@ -51,38 +51,26 @@ if not train_network:
 else:
     cycle = Cycles(light_pos)
 
-
+veh_pos, veh_angle = None, None
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
                         graphics=False)
+    veh_pos = cycle.init_pos
+    veh_angle = cycle.init_angle
 
-cycle.show_error_graph(testing_time, predict_after, brain=None, seed=None, graphics=True) if error_graph is True else None
+cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, seed=None, graphics=False) if error_graph is True else None
 
-cycle.test_network() if test_network is True else None
+cycle.test_network(graphics=False) if test_network is True else None
 
 if run_one_cycle:
-    cycle.sleep(look_ahead, individuals, generations)
+    cycle.wake_learning(50)
 
-    cycle.wake_testing(wake_test_iter)
+    rand_test = cycle.collect_training_data(True, 5, 50)
+
+    cycle.sleep(look_ahead=look_ahead, individuals=individuals, generations=generations, td=rand_test)
+
+    cycle.wake_testing(cycle.random_vehicle.pos[-1], cycle.random_vehicle.angle, wake_test_iter)
 
 if run_cycles:
-    cycle.wake_learning(initial_random_movement)
 
-    cycle.sleep(look_ahead, individuals, generations)
-
-    cycle.wake_testing(wake_test_iter, benchmark=False)
-
-    cycle.retrain_with_brain()
-
-    cycle.show_error_graph()
-
-    cycle.test_network()
-
-    cycle.assign_testing_as_initial()
-
-    cycle.sleep(100, individuals, generations)
-
-    cycle.wake_testing(200)
-
-if sleep_wake:
-    cycle.sleep_wake(initial_random_movement, cycles, look_ahead, individuals, generations)
+    cycle.run_2_cylces(look_ahead, individuals, generations, wake_test_iter)

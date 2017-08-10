@@ -100,8 +100,8 @@ class GA:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -0:  # make it -self.genome_scale for wrapping around backwards movement
-                    ind[i] = self.genome_scale - (-0 - ind[i])
+                if ind[i] < -self.genome_scale:  # make it -self.genome_scale for wrapping around backwards movement
+                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
@@ -125,22 +125,31 @@ class GA:
         if self.offline is False:
             return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
-            fitness = 0
-            for test_init in self.test_data:
-
-                sensor_log, wheel_log = self.net.predict_ahead(test_init, brain, self.look_ahead)
-
+            if self.test_data is not None:
+                fitness = 0
+                sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
                 sensor_left = sensor_log[0]
                 sensor_right = sensor_log[1]
-
-            # sim = Simulator(self.light)
-            # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a, self.light)
-            # wheel_log1 = np.copy(wheel_log)
-            # vehicle.set_wheels(wheel_log)
-            # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
-
                 fitness += np.mean(sensor_left) + np.mean(sensor_right)
-            fitness /= len(self.test_data)
+                for test_init in self.test_data:
+                    sensor_log, wheel_log = self.net.predict_ahead(test_init, brain, self.look_ahead)
+
+                    sensor_left = sensor_log[0]
+                    sensor_right = sensor_log[1]
+
+                    # sim = Simulator(self.light)
+                    # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a, self.light)
+                    # wheel_log1 = np.copy(wheel_log)
+                    # vehicle.set_wheels(wheel_log)
+                    # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+
+                    fitness += np.mean(sensor_left) + np.mean(sensor_right)
+                fitness /= len(self.test_data)
+            else:
+                sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
+                sensor_left = sensor_log[0]
+                sensor_right = sensor_log[1]
+                fitness = np.mean(sensor_left) + np.mean(sensor_right)
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
@@ -229,8 +238,8 @@ class GA:
             veh_angle = random.randint(0, 360)
         self.net = narx
         self.data = data
-        if len(test_data) > 10:
-            test_data = test_data[:10]
+        if test_data is not None and len(test_data) > 5:
+            test_data = test_data[:5]
         self.test_data = test_data
         self.look_ahead = look_ahead
         self.start_x = veh_pos[0]

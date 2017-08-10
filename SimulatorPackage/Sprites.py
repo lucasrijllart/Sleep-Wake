@@ -182,7 +182,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
     min_stop_iter = 5
     max_stop_iter = 10
 
-    def __init__(self, start_pos, start_angle, gamma, light, start_stop):
+    def __init__(self, start_pos, start_angle, gamma, light):
         forward = True
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
@@ -208,12 +208,6 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.previous_pos = None
 
-        # Stop-Start random movement vars
-        self.start_stop = start_stop
-        self.moves_left = random.randint(self.min_start_iter, self.max_start_iter)  # number of timesteps left in start stage
-        self.cool_down = None  # number of timesteps left in stop stage
-        self.is_in_stop = False  #
-
         # vehicle sensory and motor information to extract for neural network
         self.sensor_left = []
         self.sensor_right = []
@@ -229,27 +223,9 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         get_sensors(self, t)
 
         # calculate motor intensity
-        if self.start_stop:
-            if self.is_in_stop:  # in stop stage
-                if self.cool_down > 0:  # stop and still in cool down
-                    self.wheel_l, self.wheel_r = 0, 0
-                    self.cool_down -= 1
-                else:  # last stop and should start again
-                    self.moves_left = random.randint(self.min_start_iter, self.max_start_iter)
-                    self.is_in_stop = False
-            else:  # in start stage
-                if self.moves_left > 0:  # start and still has moves
-                    if random.random() < 0.5:
-                        self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
-                        self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
-                        self.moves_left -= 1
-                else:  # last start and should go to stop
-                    self.cool_down = random.randint(self.min_stop_iter, self.max_stop_iter)
-                    self.is_in_stop = True
-        else:
-            if random.random() < 0.5:
-                self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
-                self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+        if random.random() < 0.5:
+            self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+            self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
 
         # if there is a brain, pass through brain
         if world_brain is not None:
