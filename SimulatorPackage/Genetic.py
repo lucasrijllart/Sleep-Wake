@@ -7,11 +7,24 @@ import matplotlib.pyplot as plt
 
 
 def make_random_brain():
+    """
+    Creates a random brain depending on the genome scale and genome length.
+    :return: the random brain
+    """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, 2) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
+    """
+    Returns the fitness of a vehicle using real-world simulation
+    :param start_pos: vehicle starting position
+    :param start_a: vehicle starting angle
+    :param brain: vehicle brain
+    :param iterations: number of iterations to run simulation for
+    :param light: the light of the simulation
+    :return: fitness of vehicle
+    """
     # create sprites
     vehicle = BrainVehicle(start_pos, start_a, light)
     vehicle.set_values(brain)
@@ -24,6 +37,11 @@ def get_fitness(start_pos, start_a, brain, iterations, light):
 
 
 def _init_pool(individuals):
+    """
+    Creates a population of random individuals. Used when the GA starts.
+    :param individuals: number of individuals in the population
+    :return: the population as list of individuals
+    """
     pool = []
     for i in range(0, individuals):
         ind = make_random_brain()
@@ -32,6 +50,11 @@ def _init_pool(individuals):
 
 
 class GA:
+    """
+    Genetic Algorithm class, creates a population then uses random tournament selection to replace the loser with a
+    crossed-over and mutated version of the winner. The GA runs for the number of generations specified and shows a
+    graph of the evolution of the fitness over time.
+    """
 
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
@@ -39,6 +62,12 @@ class GA:
     sim = None
 
     def __init__(self, light, graphics=False):
+        """
+        Constructor for GA class, takes a light and graphics. Graphics will show the winner in real-world GA and the
+        evolution of the fitness in real-world and predicted cases.
+        :param light: the light of the simulation
+        :param graphics: boolean to show graphics or not
+        """
         self.graphics = graphics
         self.light = light
         self.sim = Simulator(self.light)
@@ -63,6 +92,12 @@ class GA:
         self.difff = []
 
     def show_fitness_graph(self, best_ind, best_fit):
+        """
+        Graph that shows the best fitness over time and the max, average, min over time.
+        :param best_ind: the best individual from the population
+        :param best_fit: the best fitness from the population
+        :return:
+        """
         plt.figure(1)
         if self.genome_length == 4:
             brain = '[%s,%s,%s,%s]' % (format(best_ind[1][0], '.2f'), format(best_ind[1][1], '.2f'),

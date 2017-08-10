@@ -126,7 +126,8 @@ class Cycles:
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
             data.append(vehicle_data_in_t)
             self.collection_vehicle_pos.extend(v.pos)  # adds the pos to the previous pos
-        print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
+        veh_is_rand = 'random' if rand_vehicle_pos else 'continuous'
+        print '\nCollected data from %d %s vehicles over %d iterations' % (runs, veh_is_rand, iterations)
         self.starting_pos_after_collect = v.pos[-1]  # keeps track of last position after collection
         self.starting_ang_after_collect = v.angle  # keeps track of last angle after collection
         return pre_process_by_vehicle(data)
@@ -284,7 +285,7 @@ class Cycles:
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process, separate into training and testing
-        train_input = self.collect_training_data(False, learning_runs, learning_time, graphics, seed)
+        train_input = self.collect_training_data(True, learning_runs, learning_time, graphics, seed)
         np.random.shuffle(train_input)
         self.vehicle_training_data = train_input[:len(train_input)/2]
         self.ga_test_data = train_input[len(train_input)/2:]
