@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def make_random_brain():
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, GA.initial_genome_scale) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
@@ -34,6 +34,7 @@ def _init_pool(individuals):
 class GA:
 
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
+    initial_genome_scale = 5
     genome_length = 4  # number of genes, can be 4 or 6
 
     sim = None
@@ -126,6 +127,10 @@ class GA:
             return get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
         else:  # if offline, get fitness by using predictions
             fitness = 0
+            sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
+            sensor_left = sensor_log[0]
+            sensor_right = sensor_log[1]
+            fitness += np.mean(sensor_left) + np.mean(sensor_right)
             for init_data in self.eval_fitness_data:
                 sensor_log, wheel_log = self.net.predict_ahead(init_data, brain, self.look_ahead)
 

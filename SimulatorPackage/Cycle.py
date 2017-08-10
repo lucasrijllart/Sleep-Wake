@@ -72,6 +72,18 @@ class Cycles:
             light_pos = [1100, 600]
         self.light = Light(light_pos)
 
+        # variables to keep the initial conditions of the training vehicle so we can test
+        # the network after with the same initial conditions
+        self.starting_vehicle_angle = None
+        self.starting_vehicle_pos = None
+        # Similar to above the last known positions shall be stored to start the cycle predictions from there
+        self.last_pos = None
+        self.last_angle = None
+        # the last trajectory coordinates
+        self.last_coord_coll = None
+
+        self.last_vehicle = None
+
         self.actual_vehicle = None
 
         self.count_cycles = 0
@@ -109,6 +121,10 @@ class Cycles:
         # get new random position for initial starting position of vehicle
         vehicle_pos, vehicle_angle = self.find_random_pos()
 
+        #to use for show error graph
+        self.starting_vehicle_angle = vehicle_angle
+        self.starting_vehicle_pos = vehicle_pos
+
         for run in range(0, runs):
 
             v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False)
@@ -125,6 +141,10 @@ class Cycles:
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
             data.append(vehicle_data_in_t)
 
+        self.last_pos = vehicle_pos
+        self.last_angle = vehicle_angle
+        self.last_coord_coll = v.pos
+        self.last_vehicle = v
         print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
         return pre_process_by_vehicle(data)
 
@@ -143,7 +163,8 @@ class Cycles:
         # find random starting pos
         vehicle_pos, vehicle_angle = self.find_random_pos()
         # execute vehicle
-        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=vehicle_pos, veh_angle=vehicle_angle, brain=brain, start_stop=True)
+        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=self.starting_vehicle_pos,
+                                      veh_angle=self.starting_vehicle_angle, brain=brain, start_stop=True)
         data = []
         for x in range(0, testing_time):
             data.append(
@@ -335,6 +356,7 @@ class Cycles:
         plt.ylabel('Sum of MSE of both sensors')
         plt.legend()
         plt.show()
+        random.seed(None)
 
     def wake_learning(self, random_movements):
         """ Create a vehicle and run for some time-steps """
@@ -418,21 +440,26 @@ class Cycles:
 
     def sleep_wake(self, random_movements=50, cycles=2,  look_ahead=100, individuals=25, generations=10):
         brains = []
+        #self.sim = Simulator(self.light)
         # Perform the initial random movement, first wake phase
         self.wake_learning(random_movements)
 
         past_sensor_motor = self.format_movement_data(self.random_vehicle)
-        # set the individuals and the generations
-        # for the ga of every cycle
-        # TODO: This variables could decrease over time when getting closer and closer to the light
-        self.ga_individuals = individuals
-        self.ga_generations = generations
-
         # intialize vehicle position , movement and angle
         past_pos = self.random_vehicle.pos
         last_pos = self.random_vehicle.pos[-1]
         last_angle = self.random_vehicle.angle
 
+        # past_sensor_motor = self.format_movement_data(self.last_vehicle)
+        # past_pos = self.last_coord_coll
+        # last_pos = self.last_pos
+        # last_angle = self.last_angle
+
+        # set the individuals and the generations
+        # for the ga of every cycle
+        # TODO: This variables could decrease over time when getting closer and closer to the light
+        self.ga_individuals = individuals
+        self.ga_generations = generations
         ga = GA(self.light, graphics=False)
 
         for _ in range(0, cycles):
@@ -442,7 +469,7 @@ class Cycles:
             ga_result = ga.run_offline(self.net, past_sensor_motor, fitness_eval_data, look_ahead,
                                        veh_pos=last_pos,
                                        veh_angle=last_angle, individuals=individuals,
-                                       generations=generations, crossover_rate=0.6, mutation_rate=0.2)
+                                       generations=generations, crossover_rate=0.7, mutation_rate=0.15)
             self.brain = ga_result[0]
 
             # add on top of the old brain
