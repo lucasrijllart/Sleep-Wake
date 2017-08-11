@@ -34,15 +34,13 @@ def _init_pool(individuals):
 class GA:
 
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
-    initial_genome_scale = 5
+    initial_genome_scale = 10  # scale of values of genes for initialization
     genome_length = 4  # number of genes, can be 4 or 6
 
-    sim = None
-
-    def __init__(self, light, graphics=False):
+    def __init__(self, light, sim, graphics=False,):
         self.graphics = graphics
         self.light = light
-        self.sim = Simulator(self.light)
+        self.sim = sim
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
         self.iterations = None
