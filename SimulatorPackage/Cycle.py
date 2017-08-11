@@ -180,6 +180,8 @@ class Cycles:
                 plt.suptitle(title)
                 i = np.array(range(0, len(vehicle.sensor_left)))
                 i2 = np.array(range(predict_after, testing_time))
+                if self.network_delay is None:
+                    self.network_delay = look_ahead
                 plt.subplot(221)
                 plt.title('Left sensor values')
                 pred_with_data = sensor_log[0][:self.network_delay]
