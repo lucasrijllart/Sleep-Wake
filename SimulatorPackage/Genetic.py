@@ -12,7 +12,7 @@ def make_random_brain():
     :return: the random brain
     """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, 2) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
@@ -92,7 +92,7 @@ class GA:
         self.sav = []
         self.difff = []
 
-    def show_fitness_graph(self, best_ind, best_fit):
+    def _show_fitness_graph(self, best_ind, best_fit):
         """
         Graph that shows the best fitness over time and the max, average, min over time.
         :param best_ind: the best individual from the population
@@ -260,7 +260,7 @@ class GA:
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
         if self.graphics:
-            self.show_fitness_graph(best_ind, best_fit)
+            self._show_fitness_graph(best_ind, best_fit)
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
@@ -289,8 +289,8 @@ class GA:
         print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals, generations, look_ahead)
         return self._start_ga(crossover_rate, mutation_rate)
 
-    def run(self, veh_pos=None, veh_angle=random.randint(0, 360), individuals=30, generations=20,
-            iterations=None, crossover_rate=0.6, mutation_rate=0.3):
+    def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), individuals=30, generations=20,
+                            iterations=None, crossover_rate=0.6, mutation_rate=0.3):
         if veh_pos is None:
             veh_pos = [random.randint(0, 1800), random.randint(0, 1000)]
         self.start_x = veh_pos[0]

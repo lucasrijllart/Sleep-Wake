@@ -3,54 +3,7 @@ import matplotlib.pyplot as plt
 from Sprites import *
 
 
-def show_sensors_motors(screen, vehicle, my_font):
-    """
-    This method draws the motor and sensory values onto the vehicle and also its trajectories.
-    :param screen: the screen to draw on
-    :param vehicle: the vehicle to draw
-    :param my_font: the font for the sensory and motor values
-    """
-    bearing = vehicle.bearing[-1]
-    radius = vehicle.radius + 5
-    # show left wheel
-    direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
-    direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
-    left_wheel = my_font.render(format(vehicle.wheel_l, '.1f'), 1, (0, 0, 0))
-    screen.blit(left_wheel, [int(direction_x), int(direction_y)])
-    # show right wheel
-    direction_x = (vehicle.pos[-1][0] + math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
-    direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
-    right_wheel = my_font.render(format(vehicle.wheel_r, '.1f'), 1, (0, 0, 0))
-    screen.blit(right_wheel, [int(direction_x), int(direction_y)])
-    # show left sensor
-    direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) - math.sin(bearing) * radius
-    direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) - math.cos(bearing) * radius
-    left_sensor = my_font.render(format(vehicle.sensor_left[-1], '.2f'), 1, (100, 100, 0))
-    screen.blit(left_sensor, [int(direction_x), int(direction_y)])
-    # show right sensor
-    direction_x = (vehicle.pos[-1][0] + math.cos(bearing) * radius) - math.sin(bearing) * radius
-    direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) - math.cos(bearing) * radius
-    right_sensor = my_font.render(format(vehicle.sensor_right[-1], '.2f'), 1, (100, 100, 0))
-    screen.blit(right_sensor, [int(direction_x), int(direction_y)])
-    # show trajectories of Random vehicle
-    if isinstance(vehicle, RandomMotorVehicle):  # random movement in blue
-        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
-        if vehicle.previous_pos is not None:
-            [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_pos]
-    # show trajectories of Controllable vehicle
-    if isinstance(vehicle, ControllableVehicle):  # random in blue, predicted in grey
-        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
-        [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
-    # show trajectories of Brain vehicle
-    if isinstance(vehicle, BrainVehicle):  # random in blue, predicted in grey, and actual in red
-        if vehicle.training_movement is not None:
-            [pygame.draw.circle(screen, (100, 120, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.training_movement]
-        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_movement]
-        [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.predicted_movement]
-        [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
-
-
-def show_graph(vehicle):
+def _show_graph(vehicle):
     """
     Graph that shows the sensory and motor values of the vehicle in time.
     :param vehicle: the vehicle
@@ -80,6 +33,52 @@ class Simulator:
         self.values_font = pygame.font.SysFont('monospace', 12)
         self.cycle_font = pygame.font.SysFont('', 24)
         self.light = light
+
+    def _draw_vehicle_extras(self, screen, vehicle):
+        """
+        This method draws the motor and sensory values onto the vehicle and also its trajectories.
+        :param screen: the screen to draw on
+        :param vehicle: the vehicle to draw
+        """
+        bearing = vehicle.bearing[-1]
+        radius = vehicle.radius + 5
+        # show left wheel
+        direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
+        direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
+        left_wheel = self.values_font.render(format(vehicle.wheel_l, '.1f'), 1, (0, 0, 0))
+        screen.blit(left_wheel, [int(direction_x), int(direction_y)])
+        # show right wheel
+        direction_x = (vehicle.pos[-1][0] + math.cos(bearing) * radius) + math.sin(bearing) * radius / 2
+        direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) + math.cos(bearing) * radius / 2
+        right_wheel = self.values_font.render(format(vehicle.wheel_r, '.1f'), 1, (0, 0, 0))
+        screen.blit(right_wheel, [int(direction_x), int(direction_y)])
+        # show left sensor
+        direction_x = (vehicle.pos[-1][0] - math.cos(bearing) * radius) - math.sin(bearing) * radius
+        direction_y = (vehicle.pos[-1][1] + math.sin(bearing) * radius) - math.cos(bearing) * radius
+        left_sensor = self.values_font.render(format(vehicle.sensor_left[-1], '.2f'), 1, (100, 100, 0))
+        screen.blit(left_sensor, [int(direction_x), int(direction_y)])
+        # show right sensor
+        direction_x = (vehicle.pos[-1][0] + math.cos(bearing) * radius) - math.sin(bearing) * radius
+        direction_y = (vehicle.pos[-1][1] - math.sin(bearing) * radius) - math.cos(bearing) * radius
+        right_sensor = self.values_font.render(format(vehicle.sensor_right[-1], '.2f'), 1, (100, 100, 0))
+        screen.blit(right_sensor, [int(direction_x), int(direction_y)])
+        # show trajectories of Random vehicle
+        if isinstance(vehicle, RandomMotorVehicle):  # random movement in blue
+            [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+            if vehicle.previous_pos is not None:
+                [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_pos]
+        # show trajectories of Controllable vehicle
+        if isinstance(vehicle, ControllableVehicle):  # random in blue, predicted in grey
+            [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
+            [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
+        # show trajectories of Brain vehicle
+        if isinstance(vehicle, BrainVehicle):  # random in blue, predicted in grey, and actual in red
+            if vehicle.training_movement is not None:
+                [pygame.draw.circle(screen, (100, 120, 100), (int(p[0]), int(p[1])), 2) for p in
+                 vehicle.training_movement]
+            [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_movement]
+            [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.predicted_movement]
+            [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
 
     def run_simulation(self, iteration, graphics, vehicle, cycle='', show_sen_mot_graph=False):
         """
@@ -112,7 +111,7 @@ class Simulator:
                     screen.blit(self.cycle_font.render(cycle, 1, (0, 0, 0)), [5, 5])
                 all_sprites.draw(screen)  # draw sprites
 
-                show_sensors_motors(screen, vehicle, self.values_font)  # draws values and trajectories
+                self._draw_vehicle_extras(screen, vehicle)  # draws values and trajectories
 
                 pygame.display.flip()
                 pygame.display.set_caption(
@@ -121,7 +120,7 @@ class Simulator:
                 time.sleep(0.03)
 
         if show_sen_mot_graph:
-            show_graph(vehicle)
+            _show_graph(vehicle)
 
         return vehicle
 

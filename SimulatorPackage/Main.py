@@ -29,7 +29,7 @@ individuals = 30
 generations = 30
 
 # Wake testing
-wake_test_iter = 100
+wake_test_iter = 500
 
 # Booleans for running
 train_network = False
@@ -73,7 +73,7 @@ if run_one_cycle:
 
 if run_cycles:
 
-    cycle.run_2_cylces(look_ahead, individuals, generations, wake_test_iter)
+    cycle.run_2_cycles(look_ahead, individuals, generations, wake_test_iter)
 
 if run_cycles_net:
 

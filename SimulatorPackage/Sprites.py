@@ -15,59 +15,6 @@ image_ratio = (all_sprites_radius * 2) / image_size
 world_brain = None
 
 
-def get_sensors(v, time):
-    """
-    Gets the sensor position based on the vehicle's position and angle, then calculates the distance to the light and
-    adds the values to the vehicle's sensor logs
-    :param v: vehicle
-    :param time: timestep for finding the current bearing
-    """
-    light_pos = v.light.pos
-    # calculate left sensor position
-    sl0 = (v.pos[time][0] - math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
-    sl1 = (v.pos[time][1] + math.sin(v.bearing[time]) * v.radius) - math.cos(v.bearing[time]) * v.radius
-    # calculate right sensor position
-    sr0 = (v.pos[time][0] + math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
-    sr1 = (v.pos[time][1] - math.sin(v.bearing[time]) * v.radius) - math.cos(v.bearing[time]) * v.radius
-    # calculate square distance to light
-    distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
-    distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
-    # calculate light intensity based on position using the formula 10/(d + 1)^0.5 (max light 10)
-    sensor_l = (10 / (distance_l + 1) ** 0.5) ** 2
-    sensor_r = (10 / (distance_r + 1) ** 0.5) ** 2
-    v.sensor_left.append(sensor_l)
-    v.sensor_right.append(sensor_r)
-
-
-def update_position(vehicle, time):
-    """
-    Updates the position of a vehicle, getting its wheel velocity and angle. Adds the new position, bearing and angle to
-    the vehicle logs.
-    :param vehicle: vehicle to update
-    :param time: timestep for bearing
-    """
-    vc = (vehicle.wheel_l + vehicle.wheel_r) / 2  # velocity center
-    va = (vehicle.wheel_r - vehicle.wheel_l) / (2 * vehicle.radius)  # velocity average
-
-    # changed top to sin and bottom to cos and it worked
-    vehicle.pos.append([vehicle.pos[-1][0] - dt * vc * math.sin(vehicle.bearing[time - 1]),
-                        vehicle.pos[-1][1] - dt * vc * math.cos(vehicle.bearing[time - 1])])  # update position
-    vehicle.bearing.append(math.fmod(vehicle.bearing[time - 1] + dt * va, 2 * math.pi))  # update bearing
-    vehicle.angle = vehicle.bearing[-1] * (180 / math.pi)
-
-
-def update_graphics(vehicle):
-    """
-    Rotates the image of the vehicle accordingly.
-    :param vehicle: vehicle to rotate
-    """
-    previous_center = vehicle.pos[-1]
-    degree = vehicle.bearing[-1] * 180 / math.pi
-    vehicle.image = pygame.transform.rotozoom(vehicle.original, degree, image_ratio)
-    vehicle.rect = vehicle.image.get_rect()
-    vehicle.rect.center = previous_center
-
-
 def run_through_brain(prediction, ind):
     """
     Gets the wheel velocity by feeding the predictions through the brain and returning the output.
@@ -93,6 +40,59 @@ def run_through_brain(prediction, ind):
         wheel_l /= 2
         wheel_r /= 2
     return wheel_l, wheel_r
+
+
+def _get_sensors(v, time):
+    """
+    Gets the sensor position based on the vehicle's position and angle, then calculates the distance to the light and
+    adds the values to the vehicle's sensor logs
+    :param v: vehicle
+    :param time: timestep for finding the current bearing
+    """
+    light_pos = v.light.pos
+    # calculate left sensor position
+    sl0 = (v.pos[time][0] - math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
+    sl1 = (v.pos[time][1] + math.sin(v.bearing[time]) * v.radius) - math.cos(v.bearing[time]) * v.radius
+    # calculate right sensor position
+    sr0 = (v.pos[time][0] + math.cos(v.bearing[time]) * v.radius) - math.sin(v.bearing[time]) * v.radius
+    sr1 = (v.pos[time][1] - math.sin(v.bearing[time]) * v.radius) - math.cos(v.bearing[time]) * v.radius
+    # calculate square distance to light
+    distance_l = math.sqrt((light_pos[0] - sl0) ** 2 + (light_pos[1] - sl1) ** 2)
+    distance_r = math.sqrt((light_pos[0] - sr0) ** 2 + (light_pos[1] - sr1) ** 2)
+    # calculate light intensity based on position using the formula 10/(d + 1)^0.5 (max light 10)
+    sensor_l = (10 / (distance_l + 1) ** 0.5) ** 2
+    sensor_r = (10 / (distance_r + 1) ** 0.5) ** 2
+    v.sensor_left.append(sensor_l)
+    v.sensor_right.append(sensor_r)
+
+
+def _update_position(vehicle, time):
+    """
+    Updates the position of a vehicle, getting its wheel velocity and angle. Adds the new position, bearing and angle to
+    the vehicle logs.
+    :param vehicle: vehicle to update
+    :param time: timestep for bearing
+    """
+    vc = (vehicle.wheel_l + vehicle.wheel_r) / 2  # velocity center
+    va = (vehicle.wheel_r - vehicle.wheel_l) / (2 * vehicle.radius)  # velocity average
+
+    # changed top to sin and bottom to cos and it worked
+    vehicle.pos.append([vehicle.pos[-1][0] - dt * vc * math.sin(vehicle.bearing[time - 1]),
+                        vehicle.pos[-1][1] - dt * vc * math.cos(vehicle.bearing[time - 1])])  # update position
+    vehicle.bearing.append(math.fmod(vehicle.bearing[time - 1] + dt * va, 2 * math.pi))  # update bearing
+    vehicle.angle = vehicle.bearing[-1] * (180 / math.pi)
+
+
+def _update_graphics(vehicle):
+    """
+    Rotates the image of the vehicle accordingly.
+    :param vehicle: vehicle to rotate
+    """
+    previous_center = vehicle.pos[-1]
+    degree = vehicle.bearing[-1] * 180 / math.pi
+    vehicle.image = pygame.transform.rotozoom(vehicle.original, degree, image_ratio)
+    vehicle.rect = vehicle.image.get_rect()
+    vehicle.rect.center = previous_center
 
 
 class ControllableVehicle(pygame.sprite.Sprite):
@@ -137,7 +137,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.sensor_right = []
         self.motor_left = [0.0]
         self.motor_right = [0.0]
-        get_sensors(self, 0)
+        _get_sensors(self, 0)
 
     def set_wheels(self, wheel_data):
         self.wheel_data = np.copy(wheel_data).tolist()
@@ -152,10 +152,10 @@ class ControllableVehicle(pygame.sprite.Sprite):
 
     def update(self, t):
         # update position
-        update_position(self, t)
+        _update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t)
+        _get_sensors(self, t)
 
         # get motor intensity
         wheel_l, wheel_r = self.wheel_data.pop(0)
@@ -165,7 +165,7 @@ class ControllableVehicle(pygame.sprite.Sprite):
         self.motor_right.append(self.wheel_r)
 
         # update graphics
-        update_graphics(self)
+        _update_graphics(self)
 
 
 class RandomMotorVehicle(pygame.sprite.Sprite):
@@ -213,14 +213,14 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.sensor_right = []
         self.motor_left = [0.0]
         self.motor_right = [0.0]
-        get_sensors(v=self, time=0)
+        _get_sensors(v=self, time=0)
 
     def update(self, t):
         # update position
-        update_position(self, t)
+        _update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t)
+        _get_sensors(self, t)
 
         # calculate motor intensity
         if random.random() < 0.5:
@@ -243,7 +243,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
         self.motor_right.append(self.wheel_r)
 
         # update graphics
-        update_graphics(self)
+        _update_graphics(self)
 
 
 class BrainVehicle(pygame.sprite.Sprite):
@@ -285,7 +285,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.sensor_right = []
         self.motor_left = [0.0]
         self.motor_right = [0.0]
-        get_sensors(self, 0)
+        _get_sensors(self, 0)
 
     def set_values(self, ll_lr_rr_rl_bl_br):
         if len(ll_lr_rr_rl_bl_br) >= 4:
@@ -305,10 +305,10 @@ class BrainVehicle(pygame.sprite.Sprite):
 
     def update(self, t):
         # update vehicle
-        update_position(self, t)
+        _update_position(self, t)
 
         # calculate sensor intensity
-        get_sensors(self, t)
+        _get_sensors(self, t)
         sensor_l = self.sensor_left[-1]
         sensor_r = self.sensor_right[-1]
 
@@ -320,7 +320,7 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.motor_right.append(self.wheel_r)
 
         # update graphics
-        update_graphics(self)
+        _update_graphics(self)
 
 
 class Light(pygame.sprite.Sprite):

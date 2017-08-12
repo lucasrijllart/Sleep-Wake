@@ -15,7 +15,9 @@ def load_narx_mlp(filename):
 
 class PyrennNarx:
 
-    def __init__(self, layers=[4, 10, 10, 2], delay=10):
+    def __init__(self, layers=None, delay=10):
+        if layers is None:
+            layers = [4, 20, 20, 2]
         self.in_nodes = layers[0] * delay
         self.inputs = layers[0]
         layers[0] *= delay
@@ -24,10 +26,10 @@ class PyrennNarx:
         self.past_data = []
         self.net = pr.CreateNN(self.layers)
 
-    def set_past_data(self, past_data):
+    def _set_past_data(self, past_data):
         self.past_data = past_data
 
-    def update_past_data(self, data):
+    def _update_past_data(self, data):
         self.past_data = np.concatenate((self.past_data, data), axis=1)
 
     def set_net(self, net):
@@ -37,9 +39,6 @@ class PyrennNarx:
         self.delay = net['nn'][0]/self.inputs
         self.layers[0] = net['nn'][0]
         self.net = net
-
-    def getNet(self):
-        return self.net
 
     def train(self, training_data, max_iter=200, verbose=False, use_mean=True):
         input_matrices = []
@@ -102,46 +101,7 @@ class PyrennNarx:
 
         self.net = pr.train_LM(input_matrices, target_matrices, self.net, k_max=max_iter, E_stop=1e-6, verbose=verbose)
 
-    def predict_noe(self, data, individual, look_ahead):
-        """ Predicts the next sensory values up until the lookahead for a given individual with the data provided
-        using an NOE network """
-        sensor_log = np.array([[], []])
-        wheel_log = []
-
-        next_input = np.array(data[:, -1])
-        next_input = np.array([[x] for x in next_input])
-
-        # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
-        # 1. predict next sensory output
-        prediction = self.predict(next_input, pre_inputs=data[:, :-1], pre_outputs=data[2:, :-1])
-        # 2. log predicted sensory information to list (used for fitness)
-        sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-        # 3. feed it to the brain to get motor information
-        wheel_log.append(run_through_brain(prediction, individual))
-
-        # 4. add this set of data to the input of the prediction
-        next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-
-        for it in range(1, look_ahead):  # loop through the time steps
-            # 1. predict next sensory output
-            prediction = self.predict(next_input, pre_inputs=data, pre_outputs=data[2:])
-
-            # 2. log predicted sensory information to list (used for fitness)
-            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
-
-            # 3. feed it to the brain to get motor information
-            wheel_log.append(run_through_brain(prediction, individual))
-
-            # 4. concatenate previous step to the full data
-            data = np.concatenate((data, next_input), axis=1)
-
-            # 5. set the predicted data to the next input of the prediction
-            next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
-            # loop back to 1 until reached timestep
-        return sensor_log, wheel_log
-
-    def predict(self, x, pre_inputs=None, pre_outputs=None):
+    def _predict(self, x, pre_inputs=None, pre_outputs=None):
         if pre_inputs is not None:
             y = pr.NNOut(x, self.net, pre_inputs, pre_outputs)
         else:
@@ -175,12 +135,12 @@ class PyrennNarx:
         next_input = np.array(data[:, -1])
         next_input = np.array([[x] for x in next_input])
 
-        self.set_past_data(data[:, :-1])  # set the past data
+        self._set_past_data(data[:, :-1])  # set the past data
         # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
         # 1. predict next sensory output
-        prediction = self.predict(next_input)
+        prediction = self._predict(next_input)
         # ad the past data to the network
-        self.update_past_data(next_input)
+        self._update_past_data(next_input)
         # 2. log predicted sensory information to list (used for fitness)
         sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
@@ -192,7 +152,7 @@ class PyrennNarx:
 
         for it in range(1, look_ahead):  # loop through the time steps
             # 1. predict next sensory output
-            prediction = self.predict(next_input)
+            prediction = self._predict(next_input)
 
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
@@ -201,14 +161,14 @@ class PyrennNarx:
             wheel_log.append(run_through_brain(prediction, ind))
 
             # 4. append previous step to the full data
-            self.update_past_data(next_input)
+            self._update_past_data(next_input)
 
             # 5. set the predicted data to the next input of the prediction
             next_input = np.array([wheel_log[-1][0], wheel_log[-1][1], prediction[0], prediction[1]]).reshape(4, 1)
             # loop back to 1 until reached time-step
         return sensor_log, wheel_log
 
-    def predict_error_graph(self, data, look_ahead, predict_after):
+    def predict_with_motors(self, data, look_ahead, predict_after):
         # determine the past data
         past_data = np.array(data[:, :predict_after])
         # intialize the arrays for the logs
@@ -227,12 +187,12 @@ class PyrennNarx:
         next_input = np.array(past_data[:, -1])
         next_input = np.array([[x] for x in next_input])
 
-        self.set_past_data(past_data[:, :-1])  # set the past data
+        self._set_past_data(past_data[:, :-1])  # set the past data
         # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
         # 1. predict next sensory output
-        prediction = self.predict(next_input)
+        prediction = self._predict(next_input)
         # ad the past data to the network
-        self.update_past_data(next_input)
+        self._update_past_data(next_input)
         # 2. log predicted sensory information to list (used for fitness)
         sensor_log = np.concatenate((sensor_log, prediction), axis=1)
 
@@ -245,7 +205,7 @@ class PyrennNarx:
 
         for it in range(1, look_ahead):  # loop through the time steps
             # 1. predict next sensory output
-            prediction = self.predict(next_input)
+            prediction = self._predict(next_input)
 
             # 2. log predicted sensory information to list (used for fitness)
             sensor_log = np.concatenate((sensor_log, prediction), axis=1)
@@ -254,12 +214,13 @@ class PyrennNarx:
             wheel_l, wheel_r = [data[0, predict_after+it], data[1, predict_after+it]]
             wheel_log.append([wheel_l, wheel_r])
             # 4. append previous step to the full data
-            self.update_past_data(next_input)
+            self._update_past_data(next_input)
 
             # 5. set the predicted data to the next input of the prediction
             next_input = np.array([[wheel_l], [wheel_r], prediction[0], prediction[1]]).reshape(4, 1)
             # loop back to 1 until reached time-step
         return sensor_log, wheel_log
+
 
 class NarxMLP:
 
@@ -276,7 +237,6 @@ class NarxMLP:
 
     def to_file(self, filename):
         pickle.dump(self.net, open(filename, 'wb'))
-
 
 
 def prepare_data(data, delay, use_mean):

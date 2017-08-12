@@ -89,7 +89,7 @@ class Cycles:
 
         self.count_cycles = 0
 
-    def find_random_pos(self):
+    def _find_random_pos(self):
         """
         Returns a random position and angle where the position is far enough from the light.
         :return: position and angle [[pos_x, pos_y], angle]
@@ -118,7 +118,7 @@ class Cycles:
         sim = Simulator(self.light)
         v = None
         # get new random position for initial starting position of vehicle
-        vehicle_pos, vehicle_angle = self.find_random_pos()
+        vehicle_pos, vehicle_angle = self._find_random_pos()
         self.init_pos = vehicle_pos
         self.init_angle = vehicle_angle
 
@@ -130,7 +130,7 @@ class Cycles:
 
             # get new position
             if rand_vehicle_pos:  # needs to be further than 500
-                vehicle_pos, vehicle_angle = self.find_random_pos()
+                vehicle_pos, vehicle_angle = self._find_random_pos()
             else:
                 vehicle_pos = v.pos[-1]
                 vehicle_angle = v.angle
@@ -162,7 +162,7 @@ class Cycles:
         # vehicle_pos, vehicle_angle = self.find_random_pos()
         # use initial position of training data
         if veh_pos is None and veh_angle is None:
-            veh_pos, veh_angle = self.find_random_pos()
+            veh_pos, veh_angle = self._find_random_pos()
 
         # execute vehicle
         vehicle = sim.init_simulation(testing_time, graphics, veh_pos=veh_pos, veh_angle=veh_angle, brain=brain)
@@ -178,7 +178,7 @@ class Cycles:
             pass
         else:  # vehicle does not have a brain, just random movement
             # make predictions
-            sensor_log, wheel_log = self.net.predict_error_graph(data, look_ahead, predict_after)
+            sensor_log, wheel_log = self.net.predict_with_motors(data, look_ahead, predict_after)
 
             v_iter = len(sensor_log[0])
             msel = [((sensor_log[0][i] - vehicle.sensor_left[i]) ** 2) / v_iter for i in range(0, v_iter)]
@@ -230,7 +230,7 @@ class Cycles:
 
             return sum(msel) + sum(mser)
 
-    def benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=1000, ga_graphics=True):
+    def _benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=1000, ga_graphics=True):
         """
         Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains
         :param vehicle_pos
@@ -251,7 +251,7 @@ class Cycles:
         random_mean_fit = np.mean(fitnesses)
 
         ga = GA(self.light, ga_graphics)
-        brain = ga.run(vehicle_pos, vehicle_angle, self.ga_individuals, self.ga_generations, iterations)
+        brain = ga.run_with_simulation(vehicle_pos, vehicle_angle, self.ga_individuals, self.ga_generations, iterations)
         brain = brain[0]
         evolved_score = Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, iterations, self.light)
         fitnesses.append(evolved_score)
@@ -386,7 +386,7 @@ class Cycles:
         # Create vehicle in simulation
         self.sim = Simulator(self.light)
         # give last position of training to vehicle pos
-        vehicle_pos, vehicle_angle = self.find_random_pos()
+        vehicle_pos, vehicle_angle = self._find_random_pos()
 
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
                                                        veh_pos=vehicle_pos, veh_angle=vehicle_angle)
@@ -413,7 +413,7 @@ class Cycles:
             test_data = self.ga_test_data
 
         # run GA and find best brain to give to testing
-        ga = GA(self.light, graphics=False)
+        ga = GA(self.light, graphics=True)
         ga_result = ga.run_offline(self.net, data, test_data, look_ahead,
                                    veh_pos=vehicle_pos, veh_angle=vehicle_ang, individuals=individuals,
                                    generations=generations, crossover_rate=0.6, mutation_rate=0.3)
@@ -507,34 +507,21 @@ class Cycles:
         plt.show()
 
         if benchmark:
-            self.benchmark_tests(vehicle_pos, vehicle_angle)
+            self._benchmark_tests(vehicle_pos, vehicle_angle)
 
-    def retrain_with_brain(self):
+    def _retrain_with_brain(self):
         print 'Got brain: ' + str(self.brain)
         Sprites.world_brain = self.brain
         self.train_network('pyrenn', 50, 100, [4, 20, 20, 2], 20, 20, graphics=False)
 
-    def assign_testing_as_initial(self):
-        vehicle_move = [[self.actual_vehicle.motor_left[0], self.actual_vehicle.motor_right[0],
-                         self.actual_vehicle.sensor_left[0], self.actual_vehicle.sensor_right[0]]]
-        for t in range(1, len(self.actual_vehicle.motor_left)):
-            vehicle_move.append([self.actual_vehicle.motor_left[t], self.actual_vehicle.motor_right[t],
-                                 self.actual_vehicle.sensor_left[t], self.actual_vehicle.sensor_right[t]])
-        vehicle_first_move = []
-        for t in range(0, len(vehicle_move)):
-            vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
-        self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
-        self.starting_pos_after_collect = self.actual_vehicle.pos[-1]
-        self.starting_ang_after_collect = self.actual_vehicle.angle
-
-    def run_2_cylces(self, look_ahead, individuals, generations, wake_test_iter):
+    def run_2_cycles(self, look_ahead, individuals, generations, wake_test_iter):
         self.sleep(self.starting_pos_after_collect, self.starting_ang_after_collect, look_ahead, individuals,
                    generations)
 
         self.wake_testing(self.starting_pos_after_collect, self.starting_ang_after_collect, wake_test_iter,
                           benchmark=False)
 
-        self.retrain_with_brain()
+        self._retrain_with_brain()
 
         self.show_error_graph(graphics=False)
 
@@ -552,7 +539,7 @@ class Cycles:
 
         self.wake_testing(self.random_vehicle.pos[-1], self.random_vehicle.angle, wake_test_iter, benchmark=False)
 
-        self.retrain_with_brain()
+        self._retrain_with_brain()
 
         self.show_error_graph(graphics=False)
 
