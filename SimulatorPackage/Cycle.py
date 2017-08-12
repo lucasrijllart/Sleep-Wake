@@ -26,6 +26,19 @@ def pre_process_by_vehicle(raw_data):
     return new_inputs
 
 
+def format_movement_data(vehicle):
+    steps = len(vehicle.motor_left)
+    vehicle_move = [[vehicle.motor_left[0], vehicle.motor_right[0],
+                     vehicle.sensor_left[0], vehicle.sensor_right[0]]]
+    for t in range(1, steps):
+        vehicle_move.append([vehicle.motor_left[t], vehicle.motor_right[t],
+                             vehicle.sensor_left[t], vehicle.sensor_right[t]])
+    vehicle_latest_move = []
+    for t in range(0, len(vehicle_move)):
+        vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
+    return np.transpose(np.array(vehicle_latest_move))
+
+
 class Cycles:
 
     def __init__(self, light_pos, type=None, net_filename=None):
@@ -46,13 +59,13 @@ class Cycles:
             self.net.set_net(saved_net)
             self.training_runs = int(re.search('\d+', re.search('r\d+', net_filename).group(0)).group(0))
             self.training_time = int(re.search('\d+', re.search('t\d+', net_filename).group(0)).group(0))
+            self.network_delay = int(re.search('\d+', re.search('d\d+', net_filename).group(0)).group(0))
             print 'Loaded NARX from file "%s" in %ds' % (net_filename, time.time() - start_time)
 
         self.vehicle_training_data = None  # this data will hold all the vehicles that the network will train with
         self.ga_test_data = None  # this data will hold all the vehicles that the GA will test the fitness from
         self.init_pos = None  # first position of vehicle before random collection
         self.init_angle = None  # first angle of vehicle before random collection
-        self.network_delay = None  # for show_error_graph() to know when the network is predicting on predictions
         self.collection_vehicle_pos = []  # all pos of collection vehicle to pass to wakeTest vehicle to show on Sim
         self.starting_pos_after_collect = None  # last position of vehicle after collection (passed to GA)
         self.starting_ang_after_collect = None  # last angle of vehicle after collection (passed to GA)
@@ -132,7 +145,8 @@ class Cycles:
         self.starting_ang_after_collect = v.angle  # keeps track of last angle after collection
         return pre_process_by_vehicle(data)
 
-    def show_error_graph(self, veh_pos=None, veh_angle=None, testing_time=300, predict_after=50, brain=None, seed=None, graphics=True):
+    def show_error_graph(self, veh_pos=None, veh_angle=None, testing_time=300, predict_after=50, brain=None, seed=None,
+                         graphics=True):
         """ Presents a graph with real and predicted sensor and motor values """
         if self.net is None:
             print 'show_error_graph() Exception: No network found'
@@ -160,7 +174,7 @@ class Cycles:
 
         # check if vehicle has a brain, if not just pass it the data
         if brain is not None:
-            brain = [float(item) for item in brain]
+            [float(item) for item in brain]
             pass
         else:  # vehicle does not have a brain, just random movement
             # make predictions
@@ -219,6 +233,8 @@ class Cycles:
     def benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=1000, ga_graphics=True):
         """
         Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains
+        :param vehicle_pos
+        :param vehicle_angle
         :param random_brains: number of random brains to run to get a good benchmark curve
         :param ga_graphics: set to True to show online GA and
         :return:
@@ -296,7 +312,7 @@ class Cycles:
         print '\nNetwork training started at ' + str(
             time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
         print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (
-        learning_runs, learning_time, delay, max_epochs)
+            learning_runs, learning_time, delay, max_epochs)
 
         start_time = time.time()
         if api == 'pyrenn':
@@ -330,7 +346,8 @@ class Cycles:
         else:
             print 'Wrong network type given'
 
-        print 'Finished training network "%s" in %s' % (self.net_filename, datetime.timedelta(seconds=time.time() - start_time))
+        print 'Finished training network "%s" in %s' % (self.net_filename,
+                                                        datetime.timedelta(seconds=time.time()-start_time))
 
     def test_network(self, tests=50, test_time=100, seed=1, graphics=False):
         """ Function that tests a network's error on many random tests
@@ -356,7 +373,8 @@ class Cycles:
             plt.title('Testing network %s for %d tests of %d timesteps.\nAverage error:%s' %
                       (self.net_filename, tests, test_time, combined_error_mean))
             plt.scatter(range(0, len(combined_error)), np.sort(combined_error), s=2, label='test error')
-            plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], c='black', label='mean error')
+            plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], c='black',
+                     label='mean error')
             plt.xlabel('test number')
             plt.ylabel('Sum of MSE of both sensors')
             plt.legend()
@@ -449,25 +467,14 @@ class Cycles:
         plt.plot(v_iter, mser)
         plt.show()
 
-    def format_movement_data(self, vehicle):
-        steps = len(vehicle.motor_left)
-        vehicle_move = [[vehicle.motor_left[0], vehicle.motor_right[0],
-                         vehicle.sensor_left[0], vehicle.sensor_right[0]]]
-        for t in range(1, steps):
-            vehicle_move.append([vehicle.motor_left[t], vehicle.motor_right[t],
-                                 vehicle.sensor_left[t], vehicle.sensor_right[t]])
-        vehicle_latest_move = []
-        for t in range(0, len(vehicle_move)):
-            vehicle_latest_move.append(np.transpose(np.array(vehicle_move[t])))
-        return np.transpose(np.array(vehicle_latest_move))
-
     def wake_testing(self, vehicle_pos, vehicle_angle, iterations, benchmark=True):
         """ This phase uses the control system to iterate through many motor commands by passing them to the controlled
         robot in the world and retrieving its sensory information """
         self.after_ga_movements = iterations
         new_vehicle = BrainVehicle(vehicle_pos, vehicle_angle, self.light)
         new_vehicle.set_values(self.brain)
-        new_vehicle.random_movement = self.collection_vehicle_pos
+        new_vehicle.training_movement = self.collection_vehicle_pos
+        new_vehicle.previous_movement = self.random_vehicle.pos
         new_vehicle.predicted_movement = self.predicted_pos
 
         self.actual_vehicle = self.sim.run_simulation(iteration=iterations, graphics=True, cycle='wake (testing)',
@@ -522,9 +529,10 @@ class Cycles:
 
     def run_2_cylces(self, look_ahead, individuals, generations, wake_test_iter):
         self.sleep(self.starting_pos_after_collect, self.starting_ang_after_collect, look_ahead, individuals,
-                    generations)
+                   generations)
 
-        self.wake_testing(wake_test_iter, benchmark=False)
+        self.wake_testing(self.starting_pos_after_collect, self.starting_ang_after_collect, wake_test_iter,
+                          benchmark=False)
 
         self.retrain_with_brain()
 
@@ -534,4 +542,22 @@ class Cycles:
 
         self.sleep(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 100, individuals, generations)
 
-        self.wake_testing(self.init_pos, self.init_angle, 400)
+        self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)
+
+    def run_2_cycles_with_net(self, initial_random_movement, look_ahead, individuals, generations, wake_test_iter):
+
+        self.wake_learning(initial_random_movement)
+
+        self.sleep(self.random_vehicle.pos[-1], self.random_vehicle.angle, look_ahead, individuals, generations)
+
+        self.wake_testing(self.random_vehicle.pos[-1], self.random_vehicle.angle, wake_test_iter, benchmark=False)
+
+        self.retrain_with_brain()
+
+        self.show_error_graph(graphics=False)
+
+        self.test_network(graphics=False)
+
+        self.sleep(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 100, individuals, generations)
+
+        self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)

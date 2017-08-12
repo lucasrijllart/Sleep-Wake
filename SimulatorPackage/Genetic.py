@@ -59,7 +59,8 @@ class GA:
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
 
-    sim = None
+    sim = None  # simulator field
+    print_iterations = 20  # this value controls how often to print the GA progress
 
     def __init__(self, light, graphics=False):
         """
@@ -118,7 +119,7 @@ class GA:
         plt.title('Individual fitness over time')
         plt.xlabel('iterations')
         plt.ylabel('fitness of individuals')
-        i = range(0, self.individuals * self.generations, 50)
+        i = range(0, self.individuals * self.generations, self.print_iterations)
         plt.scatter(i, self.max_fit, s=4, label='max')
         plt.plot(i, self.max_fit)
         plt.scatter(i, self.mean_fit, s=6, label='mean')
@@ -221,7 +222,7 @@ class GA:
                 best_ind = ind
         best_fit = [best_ind[2]]
         for generation in range(0, self.individuals * self.generations):
-            if (generation % 50) == 0:
+            if (generation % self.print_iterations) == 0:  # controls the print output to not spam console
                 print '\riter: ' + str(generation) + '/' + str(self.individuals * self.generations),
                 fits = [ind[2] for ind in pool]
                 self.mean_fit.append(np.mean(fits))

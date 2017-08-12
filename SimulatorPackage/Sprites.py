@@ -275,7 +275,8 @@ class BrainVehicle(pygame.sprite.Sprite):
         self.bearing = [float(start_angle * math.pi / 180)]  # angle of vehicle (converted to rad)
         self.w_ll, self.w_lr, self.w_rr, self.w_rl = None, None, None, None
         self.bias_l, self.bias_r = None, None  # automatically added wheel bias to wheels
-        self.random_movement = []  # keeps track of the movement before the brain
+        self.training_movement = []  # keeps track of training data
+        self.previous_movement = []  # keeps track of the movement before the brain
         self.predicted_movement = []  # keeps track of the predicted movement by the GA
         self.light = light
 

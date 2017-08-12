@@ -43,7 +43,9 @@ def show_sensors_motors(screen, vehicle, my_font):
         [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
     # show trajectories of Brain vehicle
     if isinstance(vehicle, BrainVehicle):  # random in blue, predicted in grey, and actual in red
-        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.random_movement]
+        if vehicle.training_movement is not None:
+            [pygame.draw.circle(screen, (100, 120, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.training_movement]
+        [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_movement]
         [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.predicted_movement]
         [pygame.draw.circle(screen, (240, 0, 0), (int(p[0]), int(p[1])), 2) for p in vehicle.pos]
 
