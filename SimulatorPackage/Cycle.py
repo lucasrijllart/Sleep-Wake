@@ -251,7 +251,9 @@ class Cycles:
         random_mean_fit = np.mean(fitnesses)
 
         ga = GA(self.light, ga_graphics)
-        brain = ga.run_with_simulation(vehicle_pos, vehicle_angle, self.ga_individuals, self.ga_generations, iterations)
+        test_data = [self._find_random_pos() for _ in range(0, 5)]
+        brain = ga.run_with_simulation(vehicle_pos, vehicle_angle, test_data=test_data, individuals=self.ga_individuals,
+                                       generations=self.ga_generations, iterations=iterations)
         brain = brain[0]
         evolved_score = Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, iterations, self.light)
         fitnesses.append(evolved_score)
@@ -380,7 +382,7 @@ class Cycles:
             plt.legend()
             plt.show()
 
-    def wake_learning(self, random_movements):
+    def wake_learning(self, random_movements, graphics=True):
         """ Create a vehicle and run for some time-steps """
         self.random_movements = random_movements
         # Create vehicle in simulation
@@ -388,7 +390,7 @@ class Cycles:
         # give last position of training to vehicle pos
         vehicle_pos, vehicle_angle = self._find_random_pos()
 
-        self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
+        self.random_vehicle = self.sim.init_simulation(random_movements, graphics=graphics, cycle='wake (training)',
                                                        veh_pos=vehicle_pos, veh_angle=vehicle_angle)
         vehicle_move = [[self.random_vehicle.motor_left[0], self.random_vehicle.motor_right[0],
                          self.random_vehicle.sensor_left[0], self.random_vehicle.sensor_right[0]]]
@@ -548,3 +550,66 @@ class Cycles:
         self.sleep(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 100, individuals, generations)
 
         self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)
+
+    def test_1(self, initial_random_movement, iterations=200, random_brains=500, evolved_brains=10):
+        self.wake_learning(initial_random_movement)
+        ga = GA(self.light, graphics=True)
+        test_data = [self._find_random_pos() for _ in range(0, 5)]  # get random positions to force GA to generalise
+        print test_data
+        ga_brain = ga.run_with_simulation(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.random_vehicle.pos,
+                                       test_data, iterations=iterations)
+
+
+        # benchmark test
+        random_fitnesses = []
+        print '\nStarting benchmark test for %d random brains...' % random_brains
+        start_time = time.time()
+        for individual in range(0, random_brains):
+            brain = Genetic.make_random_brain()
+            random_fitnesses.append(Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain,
+                                                        iterations, self.light))
+        print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
+        random_mean_fit = np.mean(random_fitnesses)
+
+        brain = ga_brain[0]
+        evolved_score = Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain, iterations,
+                                            self.light)
+        random_fitnesses.append(evolved_score)
+        random_fitnesses.sort()
+
+        evolved_fitnesses = []
+        ga = GA(self.light, graphics=False)
+        print '\nStarting benchmark test for %d evolved brains...' % evolved_brains
+        start_time = time.time()
+        for individual in range(0, evolved_brains):
+            self.wake_learning(initial_random_movement, graphics=False)
+            test_data = [self._find_random_pos() for _ in range(0, 5)]
+            ga_brain = ga.run_with_simulation(self.random_vehicle.pos[-1], self.random_vehicle.angle,
+                                              self.random_vehicle.pos, test_data, iterations=iterations, verbose=False)
+            evolved_fitnesses.append(Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle,
+                                                         ga_brain[0], iterations, self.light))
+        print 'Collected %d evolved brains in %ds' % (evolved_brains, time.time() - start_time)
+        evolved_mean_fit = np.mean(evolved_fitnesses)
+        evolved_fitnesses.sort()
+
+        plt.figure(1)
+        plt.subplot(121)
+        plt.title('Benchmark test for evolved vehicle and %d random brain vehicles' % random_brains)
+        evol_idx = np.where(random_fitnesses == evolved_score)
+        plt.scatter(range(0, len(random_fitnesses)), random_fitnesses, s=1, c='grey', label='random')
+        plt.scatter(evol_idx, evolved_score, s=15, c='green', label='evolved')
+        plt.plot([0, len(random_fitnesses)], [random_mean_fit, random_mean_fit], c='blue', label='random mean fitness')
+        plt.xlabel('individuals')
+        plt.ylabel('fitness')
+        plt.legend()
+
+        plt.subplot(122)
+        plt.title('Average fitness of %d evolved vehicles' % evolved_brains)
+        plt.scatter(range(0, len(evolved_fitnesses)), evolved_fitnesses, s=3, c='green', label='evolved')
+        plt.plot([0, len(evolved_fitnesses)], [evolved_mean_fit, evolved_mean_fit], c='red',
+                 label='evolved mean fitness')
+        plt.xlabel('evolved individuals')
+        plt.ylabel('fitness')
+        plt.legend()
+
+        plt.show()

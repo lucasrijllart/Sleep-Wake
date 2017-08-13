@@ -37,12 +37,16 @@ error_graph = False
 test_network = False
 
 # Cycle running
-run_one_cycle = True
+run_one_cycle = False
 run_cycles = False
 run_cycles_net = False
 
 sleep_wake = False
 cycles = 2
+
+# TESTS
+# 1. Braitenberg evolution
+braitenberg_evol = True
 
 
 # Functions
@@ -78,3 +82,6 @@ if run_cycles:
 if run_cycles_net:
 
     cycle.run_2_cycles_with_net(initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
+
+if braitenberg_evol:
+    cycle.test_1(initial_random_movement=50, iterations=100, evolved_brains=2)
