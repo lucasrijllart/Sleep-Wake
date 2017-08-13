@@ -29,11 +29,11 @@ individuals = 30
 generations = 30
 
 # Wake testing
-wake_test_iter = 500
+wake_test_iter = 100
 
 # Booleans for running
 train_network = False
-error_graph = True
+error_graph = False
 test_network = False
 
 # Cycle running

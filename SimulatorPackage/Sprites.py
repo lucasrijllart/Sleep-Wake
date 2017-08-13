@@ -316,9 +316,15 @@ class BrainVehicle(pygame.sprite.Sprite):
         wheels = run_through_brain([sensor_l, sensor_r], self.get_brain())
         self.wheel_l = wheels[0]
         self.wheel_r = wheels[1]
+
+        # if there is a world brain
+        if world_brain is not None:
+            wheels = run_through_brain([sensor_l, sensor_r], world_brain)
+            self.wheel_l = (self.wheel_l + wheels[0])/2
+            self.wheel_r = (self.wheel_r + wheels[1])/2
+
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
-
         # update graphics
         _update_graphics(self)
 

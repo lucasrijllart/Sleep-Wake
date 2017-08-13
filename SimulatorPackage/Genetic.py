@@ -36,19 +36,6 @@ def get_fitness(start_pos, start_a, brain, iterations, light):
     return fitness
 
 
-def _init_pool(individuals):
-    """
-    Creates a population of random individuals. Used when the GA starts.
-    :param individuals: number of individuals in the population
-    :return: the population as list of individuals
-    """
-    pool = []
-    for i in range(0, individuals):
-        ind = make_random_brain()
-        pool.append(ind)
-    return pool
-
-
 class GA:
     """
     Genetic Algorithm class, creates a population then uses random tournament selection to replace the loser with a
@@ -148,7 +135,17 @@ class GA:
         indlos = self._mutate(indlos, mutation_rate)
         return [indwin, indlos]
 
-    def _get_all_fitnesses(self, pool):
+    def _init_pool(self, individuals):
+        """
+        Creates a population of random individuals, then calculates their fitnesses. Used when GA starts.
+        :param individuals: number of individuals in the population
+        :return: the initialised population pool
+        """
+        pool = []
+        for i in range(0, individuals):
+            ind = make_random_brain()
+            pool.append(ind)
+
         i = 0
         all_individuals = []
         for individual in pool:
@@ -215,7 +212,7 @@ class GA:
             return sensor_log, wheel_log
 
     def _start_ga(self, crossover_rate, mutation_rate):
-        pool = self._get_all_fitnesses(_init_pool(self.individuals))
+        pool = self._init_pool(self.individuals)
         best_ind = [0, [0, 0, 0, 0, 0, 0], 0]  # initialize an individual
         for ind in pool:
             if ind[2] > best_ind[2]:
