@@ -123,7 +123,7 @@ class Cycles:
 
         for run in range(0, runs):
 
-            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma, start_stop=False)
+            v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle, gamma)
 
             vehicle_data_in_t = []
             if rand_vehicle_pos:  # needs to be further than 500
@@ -139,6 +139,7 @@ class Cycles:
 
         self.last_vehicle = v
         print '\nCollected data from %d vehicles over %d iterations' % (runs, iterations)
+        random.seed(None)
         return pre_process_by_vehicle(data)
 
     def show_error_graph(self, testing_time=300, predict_after=50, brain=None, seed=None, graphics=True):
@@ -156,8 +157,8 @@ class Cycles:
         # find random starting pos
         vehicle_pos, vehicle_angle = self.find_random_pos()
         # execute vehicle
-        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=self.starting_vehicle_pos,
-                                      veh_angle=self.starting_vehicle_angle, brain=brain, start_stop=True)
+        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=vehicle_pos,
+                                      veh_angle=vehicle_angle, brain=brain, start_stop=False)
         data = []
         for x in range(0, testing_time):
             data.append(
@@ -351,11 +352,12 @@ class Cycles:
         plt.show()
         random.seed(None)
 
-    def wake_learning(self, random_movements):
+    def wake_learning(self, random_movements, seed=None):
         """ Create a vehicle and run for some time-steps """
         self.random_movements = random_movements
         # Create vehicle in simulation
-
+        if seed is not None:
+            random.seed(seed)
         vehicle_pos, vehicle_angle = self.find_random_pos()
         self.random_vehicle = self.sim.init_simulation(random_movements, graphics=True, cycle='wake (training)',
                                                        veh_pos=vehicle_pos, veh_angle=vehicle_angle)
@@ -368,6 +370,7 @@ class Cycles:
         for t in range(0, len(vehicle_move)):
             vehicle_first_move.append(np.transpose(np.array(vehicle_move[t])))
         self.vehicle_first_move = np.transpose(np.array(vehicle_first_move))
+        random.seed(None) # remove seed when done
 
     def sleep(self, look_ahead=100, individuals=25, generations=10):
         # Collect random data to use for fitness evaluation from different initial conditions
@@ -430,7 +433,7 @@ class Cycles:
         plt.plot(v_iter, mser)
         plt.show()
 
-    def sleep_wake(self, last_traj, random_movements=50, cycles=2,  look_ahead=100, individuals=25, generations=10):
+    def sleep_wake(self, last_traj, cycles=2,  look_ahead=100, individuals=25, generations=10):
         brains = []
 
         past_sensor_motor = self.format_movement_data(last_traj)
@@ -447,7 +450,7 @@ class Cycles:
         self.ga_generations = generations
         ga = GA(self.light, self.sim, graphics=False)
 
-        fitness_eval_data = self.collect_random_data(True, 8, 40, False)
+        fitness_eval_data = self.collect_random_data(True, 5, 40, False, seed=1)
         for _ in range(0, cycles):
 
             # SLEEP NOW
@@ -477,7 +480,7 @@ class Cycles:
                                                             vehicle=ga_prediction_vehicle)
 
             # self.benchmark_tests(random_brains=1000, ga_graphics=True)
-            self.train_network('pyrenn', 3, 2000, [4, 20, 20, 2], 30, 40, graphics=False)
+            #self.train_network('pyrenn', 3, 2000, [4, 20, 20, 2], 30, 40, graphics=False)
 
             # do a wake test
             # self.wake_testing(steps, brains=brains, last_pos=last_pos, last_angle=last_angle, past_pos=past_pos
@@ -493,8 +496,8 @@ class Cycles:
     def run_cycles(self, random_movements=None, cycles=2,  look_ahead=100, individuals=25, generations=10):
 
         if random_movements is not None:
-            self.wake_learning(random_movements)
-            self.sleep_wake(self.random_vehicle, random_movements=random_movements, cycles=cycles, look_ahead=look_ahead,
+            self.wake_learning(random_movements, seed=2)
+            self.sleep_wake(self.random_vehicle, cycles=cycles, look_ahead=look_ahead,
                             individuals=individuals, generations=generations)
         else:
             self.sleep_wake(self.last_vehicle, cycles=cycles, look_ahead=look_ahead,

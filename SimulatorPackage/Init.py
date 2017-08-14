@@ -24,7 +24,7 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 100 # this is the same look ahead for the sleep_wake phase
+look_ahead = 125 # this is the same look ahead for the sleep_wake phase
 individuals = 25
 generations = 10
 
@@ -46,7 +46,7 @@ cycles = 3
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r2t2500d40e20')
+    cycle = Cycles(light_pos, net_filename='narx/r200t100d40e300')
 else:
     cycle = Cycles(light_pos)
 

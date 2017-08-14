@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def make_random_brain():
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, GA.initial_genome_scale) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light):
@@ -34,7 +34,6 @@ def _init_pool(individuals):
 class GA:
 
     genome_scale = 10  # scale of values of genes (ex: -10, 10)
-    initial_genome_scale = 10  # scale of values of genes for initialization
     genome_length = 4  # number of genes, can be 4 or 6
 
     def __init__(self, light, sim, graphics=False,):
@@ -129,19 +128,19 @@ class GA:
             sensor_left = sensor_log[0]
             sensor_right = sensor_log[1]
             fitness += np.mean(sensor_left) + np.mean(sensor_right)
+            worst_fitness = fitness
+            fitness *= 2 # give more weight to the fitness from the original point
             for init_data in self.eval_fitness_data:
                 sensor_log, wheel_log = self.net.predict_ahead(init_data, brain, self.look_ahead)
 
                 sensor_left = sensor_log[0]
                 sensor_right = sensor_log[1]
 
-                # sim = Simulator()
-                # vehicle = ControllableVehicle([self.start_x, self.start_y], self.start_a)
-                # wheel_log1 = np.copy(wheel_log)
-                # vehicle.set_wheels(wheel_log)
-                # sim.run_simulation(len(wheel_log), graphics=False, vehicle=vehicle)
+                fit = np.mean(sensor_left) + np.mean(sensor_right) # the last fitness
+                if fit < worst_fitness:
+                    worst_fitness = fit
                 fitness += np.mean(sensor_left) + np.mean(sensor_right)
-        return fitness
+        return fitness - worst_fitness # decrease by the worst fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
         fitness1 = individual1[2]
