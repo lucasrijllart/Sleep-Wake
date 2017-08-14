@@ -129,7 +129,7 @@ class GA:
             sensor_right = sensor_log[1]
             fitness += np.mean(sensor_left) + np.mean(sensor_right)
             worst_fitness = fitness
-            fitness *= 2 # give more weight to the fitness from the original point
+            #fitness *= 2 # give more weight to the fitness from the original point
             for init_data in self.eval_fitness_data:
                 sensor_log, wheel_log = self.net.predict_ahead(init_data, brain, self.look_ahead)
 

@@ -69,7 +69,8 @@ if run_cycles:
 
 if sleep_wake:
     cycle.run_cycles(initial_random_movement, cycles, individuals=individuals, generations=generations)
-# TODO: The random collected data should be slice into training data(The first part)
-# TODO: and then fitness_eval data the rest. The last position will be the one considered for the fitness
-# TODO: eval. as well.
+# TODO: Find the optimal number of randomGA eval. positions
+# TODO: Benchmark for the final brain product.
+# TODO: Examine the possibility to increase the influence of the new brains as we add more of them
+# TODO: and decrease the influence of the old ones.
 # TODO: The network training is insuficient and may need to train a network for longer with more data.

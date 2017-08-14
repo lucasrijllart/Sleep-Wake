@@ -450,7 +450,7 @@ class Cycles:
         self.ga_generations = generations
         ga = GA(self.light, self.sim, graphics=False)
 
-        fitness_eval_data = self.collect_random_data(True, 5, 40, False, seed=1)
+        fitness_eval_data = self.collect_random_data(True, 4, 40, False, seed=1)
         for _ in range(0, cycles):
 
             # SLEEP NOW
