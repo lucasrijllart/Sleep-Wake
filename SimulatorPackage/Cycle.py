@@ -228,7 +228,7 @@ class Cycles:
                 print 'Error: ' + str(sum(msel) + sum(mser))
                 plt.show()
 
-            return sum(msel) + sum(mser)
+            return (sum(msel) + sum(mser)) / 2
 
     def _benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=1000, ga_graphics=True):
         """
@@ -351,7 +351,7 @@ class Cycles:
         print 'Finished training network "%s" in %s' % (self.net_filename,
                                                         datetime.timedelta(seconds=time.time()-start_time))
 
-    def test_network(self, tests=50, test_time=100, seed=1, graphics=False):
+    def test_network(self, tests=100, test_time=100, seed=1, graphics=False):
         """ Function that tests a network's error on many random tests
         :param tests: number of tests to run (100-200 takes the right amount of time)
         :param test_time: usually around 100-200 (should be the same as network has been trained on)
@@ -561,11 +561,12 @@ class Cycles:
         :return:
         """
         test_data = [self._find_random_pos() for _ in range(0, 1)]  # get random positions to force GA to generalise
-        self.wake_learning(initial_random_movement)
-        ga = GA(self.light, graphics=False)
+        test_data = []
+        vehicle_pos, vehicle_angle = self._find_random_pos()
+        ga = GA(self.light, graphics=True)
         print test_data
-        ga_brain = ga.run_with_simulation(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.random_vehicle.pos,
-                                       test_data, iterations=iterations, generations=10)
+        ga_brain = ga.run_with_simulation(vehicle_pos, vehicle_angle, None,
+                                       test_data, iterations=iterations)
 
 
         # benchmark test

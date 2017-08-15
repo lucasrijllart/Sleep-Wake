@@ -120,6 +120,12 @@ class GA:
         plt.show()
 
     def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
+        """
+        Method to mutate an individual. Has a mutation rate variable and modifies a gene to 1% of the scale.
+        :param ind: individual
+        :param mutation_rate: rate of mutation for every gene (0.0 to 1.0)
+        :return: the mutated individual
+        """
         for i in range(0, len(ind)):
             if random.random() < mutation_rate:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
@@ -130,6 +136,14 @@ class GA:
         return ind
 
     def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
+        """
+        Performs crossover on loser then mutates, is given a winner, loser, crossover rate and mutation rate.
+        :param indwin: individual with higher fitness
+        :param indlos: individual with lower fitness
+        :param crossover_rate: rate of crossover for every gene (0.0 to 1.0)
+        :param mutation_rate: rate of mutation (given to mutate())
+        :return: winner and loser in an array
+        """
         for i in range(0, len(indwin)):
             if random.random() < crossover_rate:
                 indlos[i] = indwin[i]
@@ -157,6 +171,12 @@ class GA:
         return all_individuals
 
     def _get_fitness(self, brain):
+        """
+        Returns the fitness of an individual, checks first if GA is offline or online, then executes fitness test with
+        test data or not. Calls get_fitness() if online GA
+        :param brain: brain to test the fitness of
+        :return: fitness of the brain
+        """
         if self.offline is False:  # doing online fitness calculation
             if self.test_data is not None:  # if there is test data
                 fitness = get_fitness([self.start_x, self.start_y], self.start_a, brain, self.iterations, self.light)
@@ -195,6 +215,14 @@ class GA:
             return fitness
 
     def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
+        """
+        Executes a tournament for 2 individuals by performing crossover with winner and loser individuals.
+        :param individual1: first individual
+        :param individual2: second individual
+        :param crossover_rate: rate of crossover (passed to method)
+        :param mutation_rate: rate of mutation (passed to method)
+        :return: the two individuals, an identifier of who is the loser, and the new fitness of the changed loser.
+        """
         fitness1 = individual1[2]
         fitness2 = individual2[2]
 
@@ -208,6 +236,13 @@ class GA:
             return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
     def _run_winner(self, graphics, ind):
+        """
+        Executes winning brain at the end of GA. If offline just returns the sensor and wheel log that is predicted.
+        If online, runs the vehicle in the simulation and returns the collected sensory and motor data.
+        :param graphics: show the winner or not (only for online GA)
+        :param ind: winning individual to show
+        :return: sensor and wheel log
+        """
         if self.offline:  # offline means in sleep cycle
             return self.net.predict_ahead(self.data, ind, self.look_ahead)
 
@@ -222,6 +257,13 @@ class GA:
             return sensor_log, wheel_log
 
     def _start_ga(self, crossover_rate, mutation_rate):
+        """
+        GA main loop. Creates population, then iterates through the generations doing a tournament every iteration.
+        Updates the data collected about fitness in GA, then runs the winner, shows graph and finishes.
+        :param crossover_rate: rate of crossover (passed to method)
+        :param mutation_rate: rate of mutation (passed to method)
+        :return: brain of best individual, sensor log and wheel log
+        """
         pool = self._init_pool(self.individuals)
         best_ind = [0, [0, 0, 0, 0, 0, 0], 0]  # initialize an individual
         for ind in pool:
@@ -275,6 +317,21 @@ class GA:
 
     def run_offline(self, narx, data, test_data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
                     light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
+        """
+        Method to run GA with predictions from network.
+        :param narx: NARX network to predict with
+        :param data: previous moment of the vehicle
+        :param test_data: test points that the GA can test the vehicle's fitness on to generalise
+        :param look_ahead: how far in the future to predict
+        :param veh_pos: current vehicle position
+        :param veh_angle: current vehicle angle
+        :param light_pos: light position
+        :param individuals: number of individuals for GA
+        :param generations: number of generations for GA
+        :param crossover_rate: rate of crossover
+        :param mutation_rate: rate of mutation
+        :return: best brain, sensor log, wheel log
+        """
         if light_pos is None:
             light_pos = [1100, 600]
         if veh_pos is None:
@@ -301,6 +358,20 @@ class GA:
     def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), previous_data=None, test_data=None,
                             individuals=40, generations=20, iterations=None, crossover_rate=0.6, mutation_rate=0.3,
                             verbose=True):
+        """
+        Method to run GA with access to the real-world data. Evolves Braitenberg vehicles.
+        :param veh_pos: current vehicle coordinates
+        :param veh_angle: current vehicle angle
+        :param previous_data: previous vehicle movement
+        :param test_data: data points to test vehicle fitness on to generalise brain
+        :param individuals: number of individuals
+        :param generations: number of generations
+        :param iterations: number of iterations to move vehicles for
+        :param crossover_rate: rate of crossover
+        :param mutation_rate: rate of mutation
+        :param verbose: toggles print statements
+        :return: best brain, sensor log, wheel log
+        """
         if veh_pos is None:
             veh_pos = [random.randint(0, 1800), random.randint(0, 1000)]
         self.start_x = veh_pos[0]
