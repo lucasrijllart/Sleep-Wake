@@ -15,7 +15,7 @@ def make_random_brain():
     return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
 
 
-def get_fitness(start_pos, start_a, brain, iterations, light):
+def get_fitness(start_pos, start_a, brain, iterations, light, test_data=None):
     """
     Returns the fitness of a vehicle using real-world simulation
     :param start_pos: vehicle starting position
@@ -30,9 +30,16 @@ def get_fitness(start_pos, start_a, brain, iterations, light):
     vehicle.set_values(brain)
     # create Simulation
     vehicle = Simulator(light).run_simulation(iterations, False, vehicle)
-    sensor_left = vehicle.sensor_left
-    sensor_right = vehicle.sensor_right
-    fitness = np.mean(sensor_left) + np.mean(sensor_right)
+    fitness = np.mean(vehicle.sensor_left) + np.mean(vehicle.sensor_right)
+
+    # check for other initial conditions
+    if test_data is not None:
+        for test in test_data:
+            vehicle = BrainVehicle(test[0], test[1], light)
+            vehicle.set_values(brain)
+            vehicle = Simulator(light).run_simulation(iterations, False, vehicle)
+            fitness += np.mean(vehicle.sensor_left) + np.mean(vehicle.sensor_right)
+        fitness /= len(test_data) + 1
     return fitness
 
 
@@ -292,7 +299,7 @@ class GA:
         return self._start_ga(crossover_rate, mutation_rate)
 
     def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), previous_data=None, test_data=None,
-                            individuals=50, generations=20, iterations=None, crossover_rate=0.6, mutation_rate=0.3,
+                            individuals=40, generations=20, iterations=None, crossover_rate=0.6, mutation_rate=0.3,
                             verbose=True):
         if veh_pos is None:
             veh_pos = [random.randint(0, 1800), random.randint(0, 1000)]

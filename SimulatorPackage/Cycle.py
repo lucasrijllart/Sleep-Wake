@@ -552,61 +552,92 @@ class Cycles:
         self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)
 
     def test_1(self, initial_random_movement, iterations=200, random_brains=500, evolved_brains=10):
+        """
+        Test 1: Evolution of a Braitenberg vehicle. Time for 200 evolved brains: 6 hours
+        :param initial_random_movement:
+        :param iterations:
+        :param random_brains:
+        :param evolved_brains:
+        :return:
+        """
+        test_data = [self._find_random_pos() for _ in range(0, 1)]  # get random positions to force GA to generalise
         self.wake_learning(initial_random_movement)
-        ga = GA(self.light, graphics=True)
-        test_data = [self._find_random_pos() for _ in range(0, 5)]  # get random positions to force GA to generalise
+        ga = GA(self.light, graphics=False)
         print test_data
         ga_brain = ga.run_with_simulation(self.random_vehicle.pos[-1], self.random_vehicle.angle, self.random_vehicle.pos,
-                                       test_data, iterations=iterations)
+                                       test_data, iterations=iterations, generations=10)
 
 
         # benchmark test
         random_fitnesses = []
+        temp_fitness = 0
+        best_random_brain = []
         print '\nStarting benchmark test for %d random brains...' % random_brains
         start_time = time.time()
         for individual in range(0, random_brains):
             brain = Genetic.make_random_brain()
-            random_fitnesses.append(Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain,
-                                                        iterations, self.light))
+            fitness = Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain, iterations,
+                                          self.light, test_data)
+            if fitness > temp_fitness:
+                best_random_brain.append(brain)
+            random_fitnesses.append(fitness)
         print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
         random_mean_fit = np.mean(random_fitnesses)
-
+        print 'best brains:\n' + str(best_random_brain)
         brain = ga_brain[0]
         evolved_score = Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain, iterations,
                                             self.light)
         random_fitnesses.append(evolved_score)
+        # add best brain
+        brain = [-2, 10, -2, 10]
+        best_fitness = Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle, brain, iterations,
+                                            self.light, test_data)
+        random_fitnesses.append(best_fitness)
         random_fitnesses.sort()
 
+        # Evolved brains
         evolved_fitnesses = []
         ga = GA(self.light, graphics=False)
         print '\nStarting benchmark test for %d evolved brains...' % evolved_brains
         start_time = time.time()
         for individual in range(0, evolved_brains):
-            self.wake_learning(initial_random_movement, graphics=False)
-            test_data = [self._find_random_pos() for _ in range(0, 5)]
+            print '\rProgress: %d/%d' % (individual, evolved_brains),
+            # self.wake_learning(initial_random_movement, graphics=False)
+            test_data = [self._find_random_pos() for _ in range(0, 2)]  # get random positions to force GA to generalise
+
             ga_brain = ga.run_with_simulation(self.random_vehicle.pos[-1], self.random_vehicle.angle,
                                               self.random_vehicle.pos, test_data, iterations=iterations, verbose=False)
-            evolved_fitnesses.append(Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle,
-                                                         ga_brain[0], iterations, self.light))
-        print 'Collected %d evolved brains in %ds' % (evolved_brains, time.time() - start_time)
+            fitness = Genetic.get_fitness(self.random_vehicle.pos[-1], self.random_vehicle.angle,
+                                                         ga_brain[0], iterations, self.light, test_data)
+            print str(ga_brain[0]) + ': ' + str(fitness)
+            evolved_fitnesses.append(fitness)
+        print '\rCollected %d evolved brains in %ds' % (evolved_brains, time.time() - start_time)
         evolved_mean_fit = np.mean(evolved_fitnesses)
+        # add best brain
+        evolved_fitnesses.append(best_fitness)
         evolved_fitnesses.sort()
 
         plt.figure(1)
+        plt.suptitle('Benchmark test for evolved vehicles')
         plt.subplot(121)
-        plt.title('Benchmark test for evolved vehicle and %d random brain vehicles' % random_brains)
+        plt.title('Fitness test of evolved vehicle and %d random brain vehicles\nMean: %s' % (random_brains,
+                  format(random_mean_fit, '.3f')))
         evol_idx = np.where(random_fitnesses == evolved_score)
+        best_idx = np.where(random_fitnesses == best_fitness)
         plt.scatter(range(0, len(random_fitnesses)), random_fitnesses, s=1, c='grey', label='random')
         plt.scatter(evol_idx, evolved_score, s=15, c='green', label='evolved')
+        plt.scatter(best_idx, best_fitness, s=15, c='orange', label='optimal')
         plt.plot([0, len(random_fitnesses)], [random_mean_fit, random_mean_fit], c='blue', label='random mean fitness')
         plt.xlabel('individuals')
         plt.ylabel('fitness')
         plt.legend()
 
         plt.subplot(122)
-        plt.title('Average fitness of %d evolved vehicles' % evolved_brains)
+        plt.title('Fitness test of %d evolved vehicles\nMean: %s' % (evolved_brains, format(evolved_mean_fit, '.3f')))
+        best_idx = np.where(evolved_fitnesses == best_fitness)
         plt.scatter(range(0, len(evolved_fitnesses)), evolved_fitnesses, s=3, c='green', label='evolved')
-        plt.plot([0, len(evolved_fitnesses)], [evolved_mean_fit, evolved_mean_fit], c='red',
+        plt.scatter(best_idx, best_fitness, s=8, c='orange', label='optimal')
+        plt.plot([0, len(evolved_fitnesses)], [evolved_mean_fit, evolved_mean_fit], c='blue',
                  label='evolved mean fitness')
         plt.xlabel('evolved individuals')
         plt.ylabel('fitness')
