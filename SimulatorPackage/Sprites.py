@@ -182,8 +182,7 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
     min_stop_iter = 5
     max_stop_iter = 10
 
-    def __init__(self, start_pos, start_angle, gamma, light):
-        forward = True
+    def __init__(self, start_pos, start_angle, gamma, light, forward=True):
         # PyGame init
         pygame.sprite.Sprite.__init__(self)
         self.original = self.image  # original image to use when rotating

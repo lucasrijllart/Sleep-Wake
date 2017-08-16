@@ -142,10 +142,13 @@ class Simulator:
         """
         if veh_pos is None:
             veh_pos = [300, 300]
-        vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light)
+        if random.random() > 0.5:  # 50% of vehicles are forwards, other is backwards
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, True)
+        else:
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, False)
         vehicle.previous_pos = previous_pos
         vehicle = self.run_simulation(iteration, graphics, vehicle)
-        #self.close()
+        # self.close()
         return vehicle
 
     def init_simulation(self, iteration, graphics, cycle='', veh_pos=None, veh_angle=random.randint(0, 360),

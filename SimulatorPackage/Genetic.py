@@ -1,4 +1,5 @@
 from Simulator import Simulator
+import Sprites
 from Sprites import BrainVehicle, Light
 import numpy as np
 import random
@@ -12,7 +13,7 @@ def make_random_brain():
     :return: the random brain
     """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, GA.genome_scale) for _ in range(0, GA.genome_length)]
+    return [random.uniform(-2, 2) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light, test_data=None):
@@ -50,7 +51,7 @@ class GA:
     graph of the evolution of the fitness over time.
     """
 
-    genome_scale = 10  # scale of values of genes (ex: -10, 10)
+    genome_scale = 5  # scale of values of genes (ex: -10, 10)
     genome_length = 4  # number of genes, can be 4 or 6
 
     sim = None  # simulator field
@@ -89,12 +90,10 @@ class GA:
         self.sav = []
         self.difff = []
 
-    def _show_fitness_graph(self, best_ind, best_fit):
+    def _show_fitness_graph(self, best_ind):
         """
         Graph that shows the best fitness over time and the max, average, min over time.
         :param best_ind: the best individual from the population
-        :param best_fit: the best fitness from the population
-        :return:
         """
         plt.figure(1)
         if self.genome_length == 4:
@@ -104,10 +103,10 @@ class GA:
             brain = '[%s,%s,%s,%s,%s,%s]' % (format(best_ind[1][0], '.1f'), format(best_ind[1][1], '.1f'),
                                              format(best_ind[1][2], '.1f'), format(best_ind[1][3], '.1f'),
                                              format(best_ind[1][4], '.1f'), format(best_ind[1][5], '.1f'))
-        plt.suptitle('Finished GA of %d individuals and %d generations,\nwith fitness %s of brain: %s' % (
-            self.individuals, self.generations, format(best_ind[2], '.3f'), brain))
+        print 'GA of %d individuals and %d generations, with result %s of fitness %s' % (
+            self.individuals, self.generations, brain, format(best_ind[2], '.3f'))
 
-        plt.title('Individual fitness over time')
+        plt.title('Population fitness over iterations')
         plt.xlabel('iterations')
         plt.ylabel('fitness of individuals')
         i = range(0, self.individuals * self.generations, self.print_iterations)
@@ -306,7 +305,7 @@ class GA:
         sensor_log, predicted_wheels = self._run_winner(self.graphics, best_ind[1])
 
         if self.graphics:
-            self._show_fitness_graph(best_ind, best_fit)
+            self._show_fitness_graph(best_ind)
 
         return [best_ind[1], sensor_log, predicted_wheels]
 
@@ -351,7 +350,7 @@ class GA:
         return self._start_ga()
 
     def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), previous_data=None, test_data=None,
-                            individuals=40, generations=20, iterations=None):
+                            individuals=20, generations=20, iterations=None, world_brain=None):
         """
         Method to run GA with access to the real-world data. Evolves Braitenberg vehicles.
         :param veh_pos: current vehicle coordinates
@@ -361,6 +360,7 @@ class GA:
         :param individuals: number of individuals
         :param generations: number of generations
         :param iterations: number of iterations to move vehicles for
+        :param world_brain: brain to assign to world brain for
         :return: best brain, sensor log, wheel log
         """
         if veh_pos is None:
@@ -381,6 +381,8 @@ class GA:
         else:
             self.iterations = iterations
         self.offline = False
+        if world_brain is not None:  # add world brain to sprites if specified
+            Sprites.world_brain = world_brain
 
         if self.verbose:
             print 'Starting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations,

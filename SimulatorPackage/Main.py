@@ -6,11 +6,11 @@ light_pos = [Simulator.window_width/2, Simulator.window_height/2]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 50
+learning_runs = 200
 learning_time = 100
 layers = [4, 20, 40, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 20
-max_epochs = 20
+max_epochs = 100
 use_mean = False
 train_seed = None
 
@@ -46,12 +46,12 @@ cycles = 2
 
 # TESTS
 # 1. Braitenberg evolution
-braitenberg_evol = True
+test1 = True
 
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r200t100d40e300')
+    cycle = Cycles(light_pos, net_filename='narx/r200t100d20e100')
 else:
     cycle = Cycles(light_pos)
 
@@ -83,5 +83,6 @@ if run_cycles_net:
 
     cycle.run_2_cycles_with_net(initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
 
-if braitenberg_evol:
-    cycle.test_1(initial_random_movement=50, iterations=100, evolved_brains=2)
+if test1:
+    cycle.test_1()
+
