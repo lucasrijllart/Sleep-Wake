@@ -56,7 +56,7 @@ class GA:
     sim = None  # simulator field
     print_iterations = 20  # this value controls how often to print the GA progress
 
-    def __init__(self, light, graphics=False):
+    def __init__(self, light, crossover_rate=0.6, mutation_rate=0.3, graphics=False, verbose=True):
         """
         Constructor for GA class, takes a light and graphics. Graphics will show the winner in real-world GA and the
         evolution of the fitness in real-world and predicted cases.
@@ -68,16 +68,18 @@ class GA:
         self.sim = Simulator(self.light)
         # init values as None, as they will be rewritten in run or run_random
         self.start_x, self.start_y, self.start_a = None, None, None
-        self.iterations = None
-        self.individuals = None
-        self.generations = None
+        self.iterations = None  # number of iterations to run real-world vehicles for
+        self.individuals = None  # number of individuals
+        self.generations = None  # number of generations
+        self.crossover_rate = crossover_rate  # rate of crossover for a gene (0.0 to 1.0)
+        self.mutation_rate = mutation_rate  # rate of mutation for a gene (0.0 to 1.0)
 
         self.net = None  # NARX network used to predict values for fitness
         self.data = None
         self.test_data = None
         self.look_ahead = None
         self.offline = None
-        self.verbose = None  # bool to print Starting/Finishing text
+        self.verbose = verbose  # bool to print Starting/Finishing text
 
         # To check the values (can be removed when GA works)
         self.mean_fit = []
@@ -119,15 +121,14 @@ class GA:
 
         plt.show()
 
-    def _mutate(self, ind, mutation_rate):  # genome: [ll, lr, rr, rl, bl, br]
+    def _mutate(self, ind):  # genome: [ll, lr, rr, rl, bl, br]
         """
         Method to mutate an individual. Has a mutation rate variable and modifies a gene to 1% of the scale.
         :param ind: individual
-        :param mutation_rate: rate of mutation for every gene (0.0 to 1.0)
         :return: the mutated individual
         """
         for i in range(0, len(ind)):
-            if random.random() < mutation_rate:
+            if random.random() < self.mutation_rate:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
@@ -135,20 +136,18 @@ class GA:
                     ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
         return ind
 
-    def _perform_crossover(self, indwin, indlos, crossover_rate, mutation_rate):
+    def _perform_crossover(self, indwin, indlos):
         """
         Performs crossover on loser then mutates, is given a winner, loser, crossover rate and mutation rate.
         :param indwin: individual with higher fitness
         :param indlos: individual with lower fitness
-        :param crossover_rate: rate of crossover for every gene (0.0 to 1.0)
-        :param mutation_rate: rate of mutation (given to mutate())
         :return: winner and loser in an array
         """
         for i in range(0, len(indwin)):
-            if random.random() < crossover_rate:
+            if random.random() < self.crossover_rate:
                 indlos[i] = indwin[i]
         # mutate
-        indlos = self._mutate(indlos, mutation_rate)
+        indlos = self._mutate(indlos)
         return [indwin, indlos]
 
     def _init_pool(self, individuals):
@@ -214,24 +213,22 @@ class GA:
                 fitness = np.mean(sensor_left) + np.mean(sensor_right)
             return fitness
 
-    def _tournament(self, individual1, individual2, crossover_rate, mutation_rate):
+    def _tournament(self, individual1, individual2):
         """
         Executes a tournament for 2 individuals by performing crossover with winner and loser individuals.
         :param individual1: first individual
         :param individual2: second individual
-        :param crossover_rate: rate of crossover (passed to method)
-        :param mutation_rate: rate of mutation (passed to method)
         :return: the two individuals, an identifier of who is the loser, and the new fitness of the changed loser.
         """
         fitness1 = individual1[2]
         fitness2 = individual2[2]
 
         if fitness1 >= fitness2:
-            ind1, ind2 = self._perform_crossover(individual1[1], individual2[1], crossover_rate, mutation_rate)
+            ind1, ind2 = self._perform_crossover(individual1[1], individual2[1])
             new_fit = self._get_fitness(ind2)
             return [ind1, ind2, 2, new_fit]  # return 2 means the fitness is of individual 2 (loser)
         else:
-            ind2, ind1 = self._perform_crossover(individual2[1], individual1[1], crossover_rate, mutation_rate)
+            ind2, ind1 = self._perform_crossover(individual2[1], individual1[1])
             new_fit = self._get_fitness(ind1)
             return [ind1, ind2, 1, new_fit]  # return 1 means the fitness is of individual 1 (loser)
 
@@ -256,12 +253,10 @@ class GA:
             wheel_log = []  # no need for these values, they are used in sleep for graphs
             return sensor_log, wheel_log
 
-    def _start_ga(self, crossover_rate, mutation_rate):
+    def _start_ga(self):
         """
         GA main loop. Creates population, then iterates through the generations doing a tournament every iteration.
         Updates the data collected about fitness in GA, then runs the winner, shows graph and finishes.
-        :param crossover_rate: rate of crossover (passed to method)
-        :param mutation_rate: rate of mutation (passed to method)
         :return: brain of best individual, sensor log and wheel log
         """
         pool = self._init_pool(self.individuals)
@@ -285,7 +280,7 @@ class GA:
             if rand_ind1 == rand_ind2:
                 rand_ind2 = random.randint(0, self.individuals - 1)
             # compare fitnesses
-            ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2], crossover_rate, mutation_rate)
+            ind1, ind2, loser, fit = self._tournament(pool[rand_ind1], pool[rand_ind2])
 
             # check who is winner and overwrite their stats
             if loser == 1:
@@ -316,7 +311,7 @@ class GA:
         return [best_ind[1], sensor_log, predicted_wheels]
 
     def run_offline(self, narx, data, test_data, look_ahead, veh_pos=None, veh_angle=random.randint(0, 360),
-                    light_pos=None, individuals=25, generations=10, crossover_rate=0.6, mutation_rate=0.3):
+                    light_pos=None, individuals=25, generations=10):
         """
         Method to run GA with predictions from network.
         :param narx: NARX network to predict with
@@ -328,8 +323,6 @@ class GA:
         :param light_pos: light position
         :param individuals: number of individuals for GA
         :param generations: number of generations for GA
-        :param crossover_rate: rate of crossover
-        :param mutation_rate: rate of mutation
         :return: best brain, sensor log, wheel log
         """
         if light_pos is None:
@@ -352,12 +345,13 @@ class GA:
         self.individuals = individuals
         self.generations = generations
 
-        print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals, generations, look_ahead)
-        return self._start_ga(crossover_rate, mutation_rate)
+        if self.verbose:
+            print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals,
+                                                                                                generations, look_ahead)
+        return self._start_ga()
 
     def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), previous_data=None, test_data=None,
-                            individuals=40, generations=20, iterations=None, crossover_rate=0.6, mutation_rate=0.3,
-                            verbose=True):
+                            individuals=40, generations=20, iterations=None):
         """
         Method to run GA with access to the real-world data. Evolves Braitenberg vehicles.
         :param veh_pos: current vehicle coordinates
@@ -367,9 +361,6 @@ class GA:
         :param individuals: number of individuals
         :param generations: number of generations
         :param iterations: number of iterations to move vehicles for
-        :param crossover_rate: rate of crossover
-        :param mutation_rate: rate of mutation
-        :param verbose: toggles print statements
         :return: best brain, sensor log, wheel log
         """
         if veh_pos is None:
@@ -390,9 +381,8 @@ class GA:
         else:
             self.iterations = iterations
         self.offline = False
-        self.verbose = verbose
 
         if self.verbose:
             print 'Starting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations,
                                                                                               self.iterations)
-        return self._start_ga(crossover_rate, mutation_rate)
+        return self._start_ga()
