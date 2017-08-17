@@ -6,17 +6,17 @@ light_pos = [Simulator.window_width/2, Simulator.window_height/2]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 200
+learning_runs = 20
 learning_time = 100
-layers = [4, 20, 40, 20, 2]  # [input, layer1, layer2, output] don't change in/out
-tap_delay = 20
-max_epochs = 100
+layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
+tap_delay = 10
+max_epochs = 200
 use_mean = False
-train_seed = None
+train_seed = 5
 
 
 # Error graph
-testing_time = 300  # has to me predict_after + delays + 1
+testing_time = 100  # has to me predict_after + delays + 1
 predict_after = 40
 brain = [-1, 10, -1, 10, 10, 10]
 
@@ -46,25 +46,26 @@ cycles = 2
 
 # TESTS
 # 1. Braitenberg evolution
-test1 = True
-
+test1 = False
+# 2. Environment model
+test2 = True
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r200t100d20e100')
+    cycle = Cycles(light_pos, net_filename='narx/r20t200d40e100')
 else:
     cycle = Cycles(light_pos)
 
 veh_pos, veh_angle = None, None
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
-                        graphics=False)
+                        graphics=False, allow_back=False)
     veh_pos = cycle.init_pos
     veh_angle = cycle.init_angle
 
-cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, seed=None, graphics=True) if error_graph is True else None
+cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, seed=2, graphics=True) if error_graph is True else None
 
-cycle.test_network(graphics=True) if test_network is True else None
+cycle.test_network(test_time=200, graphics=True, seed=1) if test_network is True else None
 
 if run_one_cycle:
     cycle.wake_learning(50)
@@ -85,4 +86,7 @@ if run_cycles_net:
 
 if test1:
     cycle.test_1()
+
+if test2:
+    cycle.test_2_1('narx/test/r20t100d10e200', 'narx/test/r20t100d40e200', 40, 100, 10, 40, 8)
 

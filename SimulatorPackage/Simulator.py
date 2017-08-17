@@ -129,7 +129,7 @@ class Simulator:
         pygame.display.quit()
 
     def quick_simulation(self, iteration, graphics=False, veh_pos=None, veh_angle=random.randint(0, 360),
-                         previous_pos=None, gamma=0.3):
+                         previous_pos=None, gamma=0.3, allow_backwards=True):
         """
         Creates a vehicle then runs the simulation calling run_simulation(). Used by collect_random_data
         :param iteration: number of iterations
@@ -137,15 +137,20 @@ class Simulator:
         :param veh_pos: initial vehicle position, will default to [300, 300]
         :param veh_angle: initial vehicle angle, will default to random
         :param previous_pos: previous position, for drawing on screen
-        :param gamma: var to control random movement intensity
+        :param gamma: controls random movement intensity
+        :param allow_backwards: controls whether backwards vehicles are allowed
         :return: the vehicle after being run
         """
         if veh_pos is None:
             veh_pos = [300, 300]
-        if random.random() > 0.5:  # 50% of vehicles are forwards, other is backwards
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, True)
+        if allow_backwards:
+            if random.random() > 0.5:  # 50% of vehicles are forwards, other is backwards
+                vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, True)
+            else:
+                vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, False)
         else:
-            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, False)
+            vehicle = RandomMotorVehicle(veh_pos, veh_angle, gamma, self.light, True)
+
         vehicle.previous_pos = previous_pos
         vehicle = self.run_simulation(iteration, graphics, vehicle)
         # self.close()

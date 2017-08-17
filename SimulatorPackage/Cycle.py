@@ -89,6 +89,10 @@ class Cycles:
 
         self.count_cycles = 0
 
+        # vars for test_2_1
+        self.error_sensor_log = None  # predicted sensor log
+        self.real_sensor_log = None  # actual sensor log
+
     def _find_random_pos(self):
         """
         Returns a random position and angle where the position is far enough from the light.
@@ -102,7 +106,7 @@ class Cycles:
         return [rand_x, rand_y], random.randint(0, 360)
 
     def collect_training_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
-                              seed=None):
+                              seed=None, allow_back=True):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
         :param rand_vehicle_pos: if the second vehicle doesn't take the previous one's position
@@ -110,6 +114,7 @@ class Cycles:
         :param iterations: number of iterations of a run
         :param data_collection_graphics: show the vehicles while collecting data
         :param seed: seed to make the collection of data identically random
+        :param allow_back: controls whether backwards vehicles are allowed in training
         :return: data collected and pre-processed
         """
         if seed is not None:
@@ -125,7 +130,7 @@ class Cycles:
         for run in range(0, runs):  # run simulation for number of runs we have
             # run simulation
             v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle,
-                                     self.collection_vehicle_pos)
+                                     self.collection_vehicle_pos, allow_backwards=allow_back)
             vehicle_data_in_t = []
 
             # get new position
@@ -166,6 +171,7 @@ class Cycles:
 
         # execute vehicle
         vehicle = sim.init_simulation(testing_time, graphics, veh_pos=veh_pos, veh_angle=veh_angle, brain=brain)
+        self.real_sensor_log = vehicle.sensor_left  # collect sensory information for test_2_1
         data = []
         for x in range(0, testing_time):
             data.append(
@@ -179,6 +185,7 @@ class Cycles:
         else:  # vehicle does not have a brain, just random movement
             # make predictions
             sensor_log, wheel_log = self.net.predict_with_motors(data, look_ahead, predict_after)
+            self.error_sensor_log = sensor_log  # collect sensory information for test_2_1
 
             v_iter = len(sensor_log[0])
             msel = [((sensor_log[0][i] - vehicle.sensor_left[i]) ** 2) / v_iter for i in range(0, v_iter)]
@@ -299,13 +306,13 @@ class Cycles:
 
         return benchmark_test, time_test
 
-    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True,
-                      seed=None, graphics=False):
+    def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True, seed=None,
+                      graphics=False, allow_back=True):
         self.training_runs, self.training_time, self.network_delay = learning_runs, learning_time, delay
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process, separate into training and testing
-        train_input = self.collect_training_data(True, learning_runs, learning_time, graphics, seed)
+        train_input = self.collect_training_data(True, learning_runs, learning_time, graphics, seed, allow_back)
         np.random.shuffle(train_input)
         self.vehicle_training_data = train_input[:len(train_input)/2]
         self.ga_test_data = train_input[len(train_input)/2:]
@@ -351,25 +358,28 @@ class Cycles:
         print 'Finished training network "%s" in %s' % (self.net_filename,
                                                         datetime.timedelta(seconds=time.time()-start_time))
 
-    def test_network(self, tests=100, test_time=100, seed=1, graphics=False):
+    def test_network(self, tests=100, test_time=100, seed=1, graphics=False, verbose=True):
         """ Function that tests a network's error on many random tests
         :param tests: number of tests to run (100-200 takes the right amount of time)
         :param test_time: usually around 100-200 (should be the same as network has been trained on)
         :param seed: makes all test vehicles the same random set for every network tested
         :param graphics: shows the graph of network accuracy
-        :return: nothing
+        :param verbose: toggles printing
+        :return: the combined average error of the network
         """
-        print '\nTesting network %s for %d times...' % (self.net_filename, tests)
+        if verbose:
+            print '\nTesting network %s for %d times...' % (self.net_filename, tests)
         if seed is not None:
             random.seed(seed)
         combined_error = []
         for it in range(0, tests):
-            if it % 10 == 0:
+            if it % 10 == 0 and verbose:
                 print '\rTest %d/%d' % (it, tests),
-            combined_error.append(self.show_error_graph(testing_time=test_time, graphics=False))
+            combined_error.append(self.show_error_graph(veh_pos=[300,300], veh_angle=200, testing_time=test_time, graphics=False))
         combined_error_mean = sum(combined_error) / tests
         random.seed(None)  # reset seed to random
-        print '\rFinished network test. Average error: %s' % combined_error_mean
+        if verbose:
+            print '\rFinished network test. Average error: %s' % combined_error_mean
 
         if graphics:
             plt.title('Testing network %s for %d tests of %d timesteps.\nAverage error:%s' %
@@ -381,6 +391,8 @@ class Cycles:
             plt.ylabel('Sum of MSE of both sensors')
             plt.legend()
             plt.show()
+
+        return combined_error_mean
 
     def wake_learning(self, random_movements, graphics=True):
         """ Create a vehicle and run for some time-steps """
@@ -629,6 +641,68 @@ class Cycles:
         plt.ylabel('fitness')
         plt.legend()
 
+        plt.show()
+
+    def test_2_1(self, net1, net2, predict_after, iterations, net1delay, net2delay, seed=8):
+        cycle = Cycles(self.light.pos, net_filename=net1)
+        cycle.show_error_graph([300, 300], 200, iterations, predict_after, seed=seed, graphics=False)
+        first_sensors = cycle.error_sensor_log[0]
+
+        cycle = Cycles(self.light.pos, net_filename=net2)
+        cycle.show_error_graph([300, 300], 200, iterations, predict_after, seed=seed, graphics=False)
+        second_sensors = cycle.error_sensor_log[0]
+
+        plt.figure(1)
+        plt.suptitle('Graph showing predicted vs actual left sensor values for two different networks')
+
+        i = np.array(range(0, len(cycle.real_sensor_log)))
+        i2 = np.array(range(predict_after, iterations))
+
+        pred_with_data = first_sensors[:net1delay]
+        i2_data = i2[:net1delay]
+        pred_on_pred = first_sensors[net1delay - 1:]
+        i2_pred = i2[net1delay - 1:]
+
+        pred_with_data2 = second_sensors[:net2delay]
+        i2_data2 = i2[:net2delay]
+        pred_on_pred2 = second_sensors[net2delay - 1:]
+        i2_pred2 = i2[net2delay - 1:]
+
+        plt.plot(i, cycle.real_sensor_log, 'b', label='real vehicle values')
+        plt.plot(i2_data, pred_with_data, 'r', label='predictions with real data')
+        plt.plot(i2_pred, pred_on_pred, 'r--', label='predictions without real data')
+        plt.plot(i2_data2, pred_with_data2, 'g', label='predictions with real data')
+        plt.plot(i2_pred2, pred_on_pred2, 'g--', label='predictions without real data')
+        plt.legend()
+
+        # test of network prediction into the unknown
+        test_iter = range(60, 300, 10)
+        cycle = Cycles(self.light.pos, net_filename=net1)
+        first_net_avg = []
+        for iteration in test_iter:
+            fit1 = cycle.test_network(iteration, iteration, verbose=False)
+            fit2 = cycle.test_network(iteration, iteration*2, verbose=False)
+            first_net_avg.append((fit1 + fit2)/2)
+
+        cycle = Cycles(self.light.pos, net_filename=net2)
+        second_net_avg = []
+        for iteration in test_iter:
+            fit1 = cycle.test_network(iteration, iteration, verbose=False)
+            fit2 = cycle.test_network(iteration, iteration*2, verbose=False)
+            second_net_avg.append((fit1 + fit2)/2)
+
+        difference = [abs(first_net_avg[i] - second_net_avg[i]) for i in range(0, len(first_net_avg))]
+
+        plt.figure(2)
+        plt.title('Average accuracy of two networks over number of iterations tested')
+        plt.scatter(test_iter, first_net_avg, c='r', s=6)
+        plt.plot(test_iter, first_net_avg, 'r', label='10 delays')
+        plt.scatter(test_iter, second_net_avg, c='g', s=6)
+        plt.plot(test_iter, second_net_avg, 'g', label='40 delays')
+        plt.plot(test_iter, difference, '--', c='grey', label='difference of accuracy')
+        plt.xlabel('total vehicle iterations')
+        plt.ylabel('average accuracy over 100 tests')
+        plt.legend()
         plt.show()
 
     def test_ga_after_cycle(self, look_ahead):
