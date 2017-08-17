@@ -676,7 +676,7 @@ class Cycles:
         plt.legend()
 
         # test of network prediction into the unknown
-        test_iter = range(60, 300, 10)
+        test_iter = range(60, 200, 10)
         cycle = Cycles(self.light.pos, net_filename=net1)
         first_net_avg = []
         for iteration in test_iter:

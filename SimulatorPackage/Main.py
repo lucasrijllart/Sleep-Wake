@@ -52,7 +52,7 @@ test2 = True
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r20t200d40e100')
+    cycle = Cycles(light_pos, net_filename='narx/r100t100d20e50')
 else:
     cycle = Cycles(light_pos)
 
@@ -88,5 +88,5 @@ if test1:
     cycle.test_1()
 
 if test2:
-    cycle.test_2_1('narx/test/r20t100d10e200', 'narx/test/r20t100d40e200', 40, 100, 10, 40, 8)
+    cycle.test_2_1('narx/test2/r20t100d10e200', 'narx/test2/r20t100d40e200', 40, 100, 10, 40, 8)
 
