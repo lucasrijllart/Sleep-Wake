@@ -1,17 +1,17 @@
 from Cycle import Cycle
 
 # Train Network
-learning_runs = 300
+learning_runs = 20
 learning_time = 100
-input_delay = 20
-output_delay = 20
-max_epochs = 10
+input_delay = 10
+output_delay = 10
+max_epochs = 100
 
 # Wake learning
 initial_random_movement = 20
 
 # Error graph
-testing_time = 100
+testing_time = 200
 predict_after = 40
 
 # Sleep
@@ -31,7 +31,7 @@ run_cycles = False
 
 
 # Functions
-cycle = Cycle(net_filename='narx/r400t200d20e100_good')
+cycle = Cycle(net_filename='narx/r20t100d10e100')
 
 if train_network:
     cycle.train_network(learning_runs, learning_time, input_delay, output_delay, max_epochs)

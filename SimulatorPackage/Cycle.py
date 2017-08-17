@@ -23,7 +23,7 @@ def pre_process(raw_data):
 
 
 def collect_random_data(vehicle_pos=None, vehicle_angle_rand=True, light_pos=None, runs=10, iterations=1000,
-                        graphics=False, gamma=0.3, seed=None):
+                        graphics=False, gamma=0.3, seed=5):
     """ Runs many vehicles in simulations and collects their sensory and motor information """
     random_brains = 0  # maybe pass this into the method at some point
     if vehicle_pos is None:
@@ -90,7 +90,7 @@ class Cycle:
 
         # Create simulation, run vehicle in it, and collect its sensory and motor information
         sim = Simulator()
-        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None)
+        vehicle = sim.init_simulation(testing_time + 1, True, veh_angle=200, brain=None, use_seed=8)
         sensor_motor = []
         for x in range(0, testing_time):
             sensor_motor.append(

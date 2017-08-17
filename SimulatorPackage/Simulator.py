@@ -64,7 +64,7 @@ class Simulator:
     def __init__(self):
         pygame.init()
         self.window_width = 1800  # 1240
-        self.window_height = 1000  # 720
+        self.window_height = 1200  # 720
         self.number_of_iterations = 0
         self.light = None
 
@@ -152,7 +152,7 @@ class Simulator:
         return vehicle
 
     def init_simulation(self, iteration, graphics, veh_pos=[300, 300], veh_angle=random.randint(0, 360),
-                         light_pos=[1100, 600], gamma=0.3, use_seed=None, brain=None):
+                         light_pos=[900, 600], gamma=0.3, use_seed=None, brain=None):
         """ Runs a simulation but doesn't closes the window, used to keep the simulation going with cycles """
         if brain is not None:
             vehicle = BrainVehicle(veh_pos, veh_angle)
