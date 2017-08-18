@@ -48,7 +48,8 @@ cycles = 2
 # 1. Braitenberg evolution
 test1 = False
 # 2. Environment model
-test2 = True
+test2_1 = False
+test2_2 = True
 
 # Functions
 if not train_network:
@@ -87,6 +88,8 @@ if run_cycles_net:
 if test1:
     cycle.test_1()
 
-if test2:
+if test2_1:
     cycle.test_2_1('narx/test2/r20t100d10e200', 'narx/test2/r20t100d40e200', 40, 100, 10, 40, 8)
 
+if test2_2:
+    cycle.test_2_2('narx/r200t100d40e300', 50)

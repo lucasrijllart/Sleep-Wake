@@ -137,8 +137,8 @@ class Cycles:
             if rand_vehicle_pos:  # needs to be further than 500
                 vehicle_pos, vehicle_angle = self._find_random_pos()
             else:
-                vehicle_pos = v.pos[-1]
-                vehicle_angle = v.angle
+                vehicle_pos = vehicle_pos  # v.pos[-1]
+                vehicle_angle = vehicle_angle  # v.angle
 
             for t in range(0, iterations):
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -170,7 +170,7 @@ class Cycles:
             veh_pos, veh_angle = self._find_random_pos()
 
         # execute vehicle
-        vehicle = sim.init_simulation(testing_time, graphics, veh_pos=veh_pos, veh_angle=veh_angle, brain=brain)
+        vehicle = sim.init_simulation(testing_time, False, veh_pos=veh_pos, veh_angle=veh_angle, brain=brain)
         self.real_sensor_log = vehicle.sensor_left  # collect sensory information for test_2_1
         data = []
         for x in range(0, testing_time):
@@ -204,7 +204,7 @@ class Cycles:
                 if self.network_delay is None:
                     self.network_delay = look_ahead
                 plt.subplot(221)
-                plt.title('Left sensor values')
+                plt.title('Predicted vs actual values for left sensor')
                 pred_with_data = sensor_log[0][:self.network_delay]
                 i2_data = i2[:self.network_delay]
                 pred_on_pred = sensor_log[0][self.network_delay-1:]
@@ -212,6 +212,8 @@ class Cycles:
                 plt.plot(i, vehicle.sensor_left, 'b', label='real vehicle values')
                 plt.plot(i2_data, pred_with_data, 'r', label='predictions with real data')
                 plt.plot(i2_pred, pred_on_pred, 'r--', label='predictions without real data')
+                plt.xlabel('vehicle iteration')
+                plt.ylabel('left sensor value')
                 plt.legend()
 
                 plt.subplot(222)
@@ -234,6 +236,9 @@ class Cycles:
                 plt.plot(i2, mser)
                 print 'Error: ' + str(sum(msel) + sum(mser))
                 plt.show()
+
+            if seed is not None:
+                random.seed()
 
             return (sum(msel) + sum(mser)) / 2
 
@@ -307,18 +312,18 @@ class Cycles:
         return benchmark_test, time_test
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True, seed=None,
-                      graphics=False, allow_back=True):
+                      graphics=False, allow_back=False, random_pos=True, save_net=True):
         self.training_runs, self.training_time, self.network_delay = learning_runs, learning_time, delay
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process, separate into training and testing
-        train_input = self.collect_training_data(True, learning_runs, learning_time, graphics, seed, allow_back)
+        train_input = self.collect_training_data(random_pos, learning_runs, learning_time, graphics, seed, allow_back)
         np.random.shuffle(train_input)
         self.vehicle_training_data = train_input[:len(train_input)/2]
         self.ga_test_data = train_input[len(train_input)/2:]
 
         # creation of network
-        print '\nNetwork training started at ' + str(
+        print 'Network training started at ' + str(
             time.strftime('%H:%M:%S %d/%m', time.localtime()) + ' with params:')
         print '\t learning runs=%d, learning time=%d, delays=%d, epochs=%d' % (
             learning_runs, learning_time, delay, max_epochs)
@@ -327,17 +332,18 @@ class Cycles:
         if api == 'pyrenn':
             self.net = PyrennNarx(layers=layers, delay=delay)
             # train network
-            self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
+            self.net.train(train_input, verbose=False, max_iter=max_epochs, use_mean=use_mean)
 
-            # check if filename is already taken
-            count = 1
-            new_filename = self.net_filename
-            while os.path.exists(new_filename):
-                new_filename = self.net_filename + '_v' + str(count)
-                count += 1
-            filename = new_filename
-            # save network to file
-            self.net.save_to_file(filename=filename)
+            if save_net:
+                # check if filename is already taken
+                count = 1
+                new_filename = self.net_filename
+                while os.path.exists(new_filename):
+                    new_filename = self.net_filename + '_v' + str(count)
+                    count += 1
+                filename = new_filename
+                # save network to file
+                self.net.save_to_file(filename=filename)
         elif api == 'skmlp':
             self.net = NarxMLP()
 
@@ -358,7 +364,7 @@ class Cycles:
         print 'Finished training network "%s" in %s' % (self.net_filename,
                                                         datetime.timedelta(seconds=time.time()-start_time))
 
-    def test_network(self, tests=100, test_time=100, seed=1, graphics=False, verbose=True):
+    def test_network(self, tests=100, test_time=100, seed=1, predict_after=20, graphics=False, verbose=True):
         """ Function that tests a network's error on many random tests
         :param tests: number of tests to run (100-200 takes the right amount of time)
         :param test_time: usually around 100-200 (should be the same as network has been trained on)
@@ -375,20 +381,22 @@ class Cycles:
         for it in range(0, tests):
             if it % 10 == 0 and verbose:
                 print '\rTest %d/%d' % (it, tests),
-            combined_error.append(self.show_error_graph(veh_pos=[300,300], veh_angle=200, testing_time=test_time, graphics=False))
+            combined_error.append(self.show_error_graph(testing_time=test_time, predict_after=predict_after,
+                                                        graphics=False))
         combined_error_mean = sum(combined_error) / tests
-        random.seed(None)  # reset seed to random
+        if seed is not None:
+            random.seed(None)  # reset seed to random
         if verbose:
             print '\rFinished network test. Average error: %s' % combined_error_mean
 
         if graphics:
-            plt.title('Testing network %s for %d tests of %d timesteps.\nAverage error:%s' %
-                      (self.net_filename, tests, test_time, combined_error_mean))
+            plt.title('Accuracy test of network %s for %d tests of %d timesteps.\nAverage error:%s' %
+                      (self.net_filename, tests, test_time, format(combined_error_mean, '.3f')))
             plt.scatter(range(0, len(combined_error)), np.sort(combined_error), s=2, label='test error')
             plt.plot([0, len(combined_error)], [combined_error_mean, combined_error_mean], c='black',
                      label='mean error')
             plt.xlabel('test number')
-            plt.ylabel('Sum of MSE of both sensors')
+            plt.ylabel('Sum of Mean Square Error for both sensors')
             plt.legend()
             plt.show()
 
@@ -694,16 +702,69 @@ class Cycles:
         difference = [abs(first_net_avg[i] - second_net_avg[i]) for i in range(0, len(first_net_avg))]
 
         plt.figure(2)
-        plt.title('Average accuracy of two networks over number of iterations tested')
+        plt.title('Average error of two networks over number of iterations tested')
         plt.scatter(test_iter, first_net_avg, c='r', s=6)
         plt.plot(test_iter, first_net_avg, 'r', label='10 delays')
         plt.scatter(test_iter, second_net_avg, c='g', s=6)
         plt.plot(test_iter, second_net_avg, 'g', label='40 delays')
         plt.plot(test_iter, difference, '--', c='grey', label='difference of accuracy')
         plt.xlabel('total vehicle iterations')
-        plt.ylabel('average accuracy over 100 tests')
+        plt.ylabel('average error over 100 tests')
         plt.legend()
         plt.show()
+
+    def test_2_2(self, best_net, num_of_tests):
+        # test 1 - prediction of a vehicle
+        if True:
+            cycle = Cycles(self.light.pos, net_filename=best_net)
+            cycle.show_error_graph(testing_time=500, predict_after=50, seed=2, graphics=True)
+
+            # test 2
+            cycle.test_network(2, 200, seed=8, graphics=True)  # 5,
+
+        # test 3 - randomly trained network vs identically trained network tested on random vehicles
+        if True:
+            start_time = time.time()
+            num_of_tests = range(0, num_of_tests)
+            cycle = Cycles(self.light.pos)
+            random_trained_net_error = []
+            identic_trained_net_error = []
+
+            for i in num_of_tests:
+                cycle.train_network('pyrenn', 20, 50, [4, 20, 20, 2], 10, 50, seed=i, random_pos=True, save_net=False)
+                random_trained_net_error.append(cycle.test_network(100, 50, seed=i+50, predict_after=10, verbose=False))
+                cycle.train_network('pyrenn', 20, 50, [4, 20, 20, 2], 10, 50, seed=i, random_pos=False, save_net=False)
+                identic_trained_net_error.append(cycle.test_network(100, 50, seed=i+50, predict_after=10, verbose=False))
+
+            # get difference between the two network's error
+            diff_array = [(i, abs(random_trained_net_error[i] - identic_trained_net_error[i])) for i in num_of_tests]
+            dtype = [('idx', int), ('diff', float)]  # create new type (idx, diff)
+            diff_array = np.array(diff_array, dtype=dtype)  # convert diff_array to numpy array structure
+            diff_array = np.sort(diff_array, order='diff')  # sort array based on difference
+            new_sorting = [i[0] for i in diff_array]  # get the new, sorted indexes
+            # pick out the values from the networks based on the new indexes (based on difference)
+            new_random = [random_trained_net_error[i] for i in new_sorting]
+            random_mean = np.mean(new_random)
+            new_identic = [identic_trained_net_error[i] for i in new_sorting]
+            identic_mean = np.mean(new_identic)
+            print '\nTest 2 part 2 graph 3 time taken: %s' % str(datetime.timedelta(seconds=time.time()-start_time))
+            print 'Random   mean: %s' % random_mean
+            print 'Identic  mean: %s' % identic_mean
+
+            plt.title('Measured error of models trained with random initial conditions\n'
+                      'and identical initial conditions tested on random vehicles')
+            plt.scatter(num_of_tests, new_random, c='orange')
+            plt.scatter(num_of_tests, new_identic, c='blue')
+            plt.plot(num_of_tests, new_random, c='orange', label='random initial conditions training')
+            plt.plot([0, len(num_of_tests)], [random_mean, random_mean], '--', color='orange',
+                     label='random net average error')
+            plt.plot(num_of_tests, new_identic, c='blue', label='same initial conditions training')
+            plt.plot([0, len(num_of_tests)], [identic_mean, identic_mean], '--', color='blue',
+                     label='identical net average error')
+            plt.xlabel('test number')
+            plt.ylabel('combined MSE for 100 random trajectories')
+            plt.legend()
+            plt.show()
 
     def test_ga_after_cycle(self, look_ahead):
         """
