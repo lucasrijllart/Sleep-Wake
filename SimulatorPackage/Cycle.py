@@ -106,7 +106,7 @@ class Cycles:
         return [rand_x, rand_y], random.randint(0, 360)
 
     def collect_training_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
-                              seed=None, allow_back=True):
+                              seed=None, allow_back=True, continuous=False):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
         :param rand_vehicle_pos: if the second vehicle doesn't take the previous one's position
@@ -115,6 +115,7 @@ class Cycles:
         :param data_collection_graphics: show the vehicles while collecting data
         :param seed: seed to make the collection of data identically random
         :param allow_back: controls whether backwards vehicles are allowed in training
+        :param continuous: makes vehicle move continuously
         :return: data collected and pre-processed
         """
         if seed is not None:
@@ -134,11 +135,15 @@ class Cycles:
             vehicle_data_in_t = []
 
             # get new position
-            if rand_vehicle_pos:  # needs to be further than 500
-                vehicle_pos, vehicle_angle = self._find_random_pos()
+            if continuous:
+                vehicle_pos = v.pos[-1]
+                vehicle_angle = v.angle
             else:
-                vehicle_pos = vehicle_pos  # v.pos[-1]
-                vehicle_angle = vehicle_angle  # v.angle
+                if rand_vehicle_pos:  # needs to be further than 500
+                    vehicle_pos, vehicle_angle = self._find_random_pos()
+                else:  # identical initial conditions
+                    vehicle_pos = vehicle_pos
+                    vehicle_angle = vehicle_angle
 
             for t in range(0, iterations):
                 vehicle_data_in_t.append([v.motor_left[t], v.motor_right[t], v.sensor_left[t], v.sensor_right[t]])
@@ -312,12 +317,13 @@ class Cycles:
         return benchmark_test, time_test
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True, seed=None,
-                      graphics=False, allow_back=False, random_pos=True, save_net=True):
+                      graphics=False, allow_back=False, random_pos=True, save_net=True, continuous=False):
         self.training_runs, self.training_time, self.network_delay = learning_runs, learning_time, delay
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process, separate into training and testing
-        train_input = self.collect_training_data(random_pos, learning_runs, learning_time, graphics, seed, allow_back)
+        train_input = self.collect_training_data(random_pos, learning_runs, learning_time, graphics, seed, allow_back,
+                                                 continuous)
         np.random.shuffle(train_input)
         self.vehicle_training_data = train_input[:len(train_input)/2]
         self.ga_test_data = train_input[len(train_input)/2:]
@@ -761,6 +767,67 @@ class Cycles:
             plt.plot(num_of_tests, new_identic, c='blue', label='same initial conditions training')
             plt.plot([0, len(num_of_tests)], [identic_mean, identic_mean], '--', color='blue',
                      label='identical net average error')
+            plt.xlabel('test number')
+            plt.ylabel('combined MSE for 100 random trajectories')
+            plt.legend()
+            plt.show()
+
+    def test2_3(self, num_of_tests):
+        # test 1 - random, continuous and identical trained network tested on random vehicles
+        if True:
+            start_time = time.time()
+            num_of_tests = range(0, num_of_tests)
+            cycle = Cycles(self.light.pos)
+            random_trained_net_error = []
+            identic_trained_net_error = []
+            cont_trained_net_error =[]
+
+            for i in num_of_tests:
+                cycle.train_network('pyrenn', 20, 50, [4, 20, 20, 2], 10, 50, seed=i, random_pos=True, save_net=False)
+                random_trained_net_error.append(
+                    cycle.test_network(100, 50, seed=i + 50, predict_after=10, verbose=False))
+
+                cycle.train_network('pyrenn', 20, 50, [4, 20, 20, 2], 10, 50, seed=i, random_pos=False, save_net=False)
+                identic_trained_net_error.append(
+                    cycle.test_network(100, 50, seed=i + 50, predict_after=10, verbose=False))
+
+                cycle.train_network('pyrenn', 20, 50, [4, 20, 20, 2], 10, 50, seed=i, save_net=False, continuous=True)
+                cont_trained_net_error.append(
+                    cycle.test_network(100, 50, seed=i+50, predict_after=10, verbose=False))
+
+            # get difference between the two network's error
+            diff_array = [(i, abs(random_trained_net_error[i] - cont_trained_net_error[i])) for i in num_of_tests]
+            dtype = [('idx', int), ('diff', float)]  # create new type (idx, diff)
+            diff_array = np.array(diff_array, dtype=dtype)  # convert diff_array to numpy array structure
+            diff_array = np.sort(diff_array, order='diff')  # sort array based on difference
+            new_sorting = [i[0] for i in diff_array]  # get the new, sorted indexes
+            # pick out the values from the networks based on the new indexes (based on difference)
+            new_random = [random_trained_net_error[i] for i in new_sorting]
+            random_mean = np.mean(new_random)
+            new_identic = [identic_trained_net_error[i] for i in new_sorting]
+            identic_mean = np.mean(new_identic)
+            new_cont = [cont_trained_net_error[i] for i in new_sorting]
+            cont_mean = np.mean(new_cont)
+            print '\nTest 2 part 2 graph 3 time taken: %s' % str(datetime.timedelta(seconds=time.time() - start_time))
+            print 'Random   mean: %s' % random_mean
+            print 'Identic  mean: %s' % identic_mean
+            print 'Continu  mean: %s' % cont_mean
+
+            plt.title('Measured error of models trained with random, continuous, and identical initial conditions\n'
+                      'tested on the same 100 random trajectories of 50 iterations')
+            plt.scatter(num_of_tests, new_random, c='orange')
+            plt.scatter(num_of_tests, new_identic, c='blue')
+            plt.scatter(num_of_tests, new_cont, c='green')
+            plt.plot(num_of_tests, new_random, c='orange', label='random initial conditions')
+            plt.plot([0, len(num_of_tests)], [random_mean, random_mean], '--', color='orange',
+                     label='random average error')
+            plt.plot(num_of_tests, new_identic, c='blue', label='same initial conditions')
+            plt.plot([0, len(num_of_tests)], [identic_mean, identic_mean], '--', color='blue',
+                     label='identical average error')
+            plt.plot(num_of_tests, new_cont, c='green', label='continuous initial conditions')
+            plt.plot([0, len(num_of_tests)], [cont_mean, cont_mean], '--', color='green',
+                     label='continuous average error')
+
             plt.xlabel('test number')
             plt.ylabel('combined MSE for 100 random trajectories')
             plt.legend()
