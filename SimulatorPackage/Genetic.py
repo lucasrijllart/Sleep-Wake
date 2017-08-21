@@ -13,7 +13,7 @@ def make_random_brain():
     :return: the random brain
     """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, 2) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, 5) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light, test_data=None):
@@ -131,8 +131,8 @@ class GA:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -self.genome_scale:  # make it -self.genome_scale for wrapping around backwards movement
-                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
+                if ind[i] < -0:  # make it -self.genome_scale for wrapping around backwards movement
+                    ind[i] = self.genome_scale - (-0 - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos):
@@ -190,7 +190,7 @@ class GA:
                 sensor_log, wheel_log = self.net.predict_ahead(self.data, brain, self.look_ahead)
                 sensor_left = sensor_log[0]
                 sensor_right = sensor_log[1]
-                fitness += np.mean(sensor_left) + np.mean(sensor_right)
+                fitness += (np.mean(sensor_left) + np.mean(sensor_right)) * 2
                 for test_init in self.test_data:
                     sensor_log, wheel_log = self.net.predict_ahead(test_init, brain, self.look_ahead)
 
@@ -345,7 +345,7 @@ class GA:
         self.generations = generations
 
         if self.verbose:
-            print '\nStarting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals,
+            print 'Starting GA with model: individuals=%s generations=%s look_ahead=%s...' % (individuals,
                                                                                                 generations, look_ahead)
         return self._start_ga()
 

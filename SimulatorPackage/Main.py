@@ -51,10 +51,10 @@ test1 = False
 # 2. Environment model
 test2_1 = False
 test2_2 = False
-test2_3 = True
+test2_3 = False
 # 3. Control System evolution
 test3_1 = False
-test3_2 = False
+test3_2 = True
 
 # Functions
 if not train_network:
@@ -101,10 +101,10 @@ if test2_2:
     test.test_2_2('narx/r200t100d40e300', 50)
 
 if test2_3:
-    test.test_2_3(num_of_tests=20)
+    test.test_2_3(num_of_tests=100)
 
 if test3_1:
     test.test_3_1('narx/r200t100d40e300')
 
 if test3_2:
-    test.test_3_2('narx/r200t100d40e300', num_of_tests=10)
+    test.test_3_2('narx/r200t100d40e300', num_of_tests=2)

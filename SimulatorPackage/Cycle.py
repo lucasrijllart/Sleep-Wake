@@ -107,7 +107,7 @@ class Cycles:
         self.real_sensor_log = None  # actual sensor log
 
     def collect_training_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
-                              seed=None, allow_back=True, continuous=False):
+                              seed=None, allow_back=True, continuous=False, verbose=True):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
         :param rand_vehicle_pos: if the second vehicle doesn't take the previous one's position
@@ -117,6 +117,7 @@ class Cycles:
         :param seed: seed to make the collection of data identically random
         :param allow_back: controls whether backwards vehicles are allowed in training
         :param continuous: makes vehicle move continuously
+        :param verbose: toggle printing
         :return: data collected and pre-processed
         """
         if seed is not None:
@@ -151,7 +152,8 @@ class Cycles:
             data.append(vehicle_data_in_t)
             self.collection_vehicle_pos.extend(v.pos)  # adds the pos to the previous pos
         veh_is_rand = 'random' if rand_vehicle_pos else 'continuous'
-        print '\nCollected data from %d %s vehicles over %d iterations' % (runs, veh_is_rand, iterations)
+        if verbose:
+            print '\nCollected data from %d %s vehicles over %d iterations' % (runs, veh_is_rand, iterations)
         self.pos_after_collect = v.pos[-1]  # keeps track of last position after collection
         self.ang_after_collect = v.angle  # keeps track of last angle after collection
         return pre_process_by_vehicle(data)
@@ -259,17 +261,17 @@ class Cycles:
         """
         iterations = self.after_ga_movements
         fitnesses = []
+        test_data = [find_random_pos(self.light) for _ in range(0, 5)]
 
         print '\nStarting benchmark test for %d random brains...' % random_brains
         start_time = time.time()
         for individual in range(0, random_brains):
             brain = Genetic.make_random_brain()
-            fitnesses.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, iterations, self.light))
+            fitnesses.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, iterations, self.light, test_data))
         print 'Collected %d random brains in %ds' % (random_brains, time.time() - start_time)
         random_mean_fit = np.mean(fitnesses)
 
         ga = GA(self.light, ga_graphics)
-        test_data = [find_random_pos(self.light) for _ in range(0, 5)]
         brain = ga.run_with_simulation(vehicle_pos, vehicle_angle, test_data=test_data, individuals=self.ga_individuals,
                                        generations=self.ga_generations, iterations=iterations)
         brain = brain[0]
@@ -443,9 +445,8 @@ class Cycles:
 
         # run GA and find best brain to give to testing
         ga = GA(self.light, graphics=graphics)
-        ga_result = ga.run_offline(self.net, data, test_data, look_ahead,
-                                   veh_pos=vehicle_pos, veh_angle=vehicle_ang, individuals=individuals,
-                                   generations=generations)
+        ga_result = ga.run_offline(self.net, data, test_data, look_ahead, vehicle_pos, vehicle_ang, self.light.pos,
+                                   individuals, generations)
         self.brain = ga_result[0]
         predicted_sensors = ga_result[1]
         predicted_wheels = ga_result[2]
