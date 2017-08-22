@@ -13,7 +13,7 @@ def make_random_brain():
     :return: the random brain
     """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(0, 5) for _ in range(0, GA.genome_length)]
+    return [random.uniform(-2, 2) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light, test_data=None):
@@ -131,8 +131,8 @@ class GA:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
                     ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -0:  # make it -self.genome_scale for wrapping around backwards movement
-                    ind[i] = self.genome_scale - (-0 - ind[i])
+                if ind[i] < -self.genome_scale:  # make it -self.genome_scale for wrapping around backwards movement
+                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos):
@@ -382,7 +382,7 @@ class GA:
             self.iterations = iterations
         self.offline = False
         if world_brain is not None:  # add world brain to sprites if specified
-            Sprites.world_brain = world_brain
+            Sprites.world_brains.append(world_brain)
 
         if self.verbose:
             print 'Starting GA with world: individuals=%d generations=%d iterations=%d...' % (individuals, generations,

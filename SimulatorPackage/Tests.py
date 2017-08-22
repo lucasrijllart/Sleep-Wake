@@ -241,15 +241,15 @@ class Tests:
         for i in num_of_tests:
             print '\n- - Test %s/%s  Time elapsed: %s' % (i, len(num_of_tests),
                                                           str(datetime.timedelta(seconds=time.time() - start_time)))
-            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 150, random_pos=True, save_net=False)
+            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 200, random_pos=True, save_net=False)
             random_trained_net_error.append(
                 cycle.test_network(100, 40, seed=i + 50, predict_after=10, verbose=False))
 
-            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 150, random_pos=False, save_net=False)
+            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 200, random_pos=False, save_net=False)
             identic_trained_net_error.append(
                 cycle.test_network(100, 40, seed=i + 50, predict_after=10, verbose=False))
 
-            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 150, save_net=False, continuous=True)
+            cycle.train_network('pyrenn', 30, 50, [4, 20, 20, 2], 10, 100, seed=i + 200, save_net=False, continuous=True)
             cont_trained_net_error.append(
                 cycle.test_network(100, 40, seed=i + 50, predict_after=10, verbose=False))
 
@@ -290,7 +290,6 @@ class Tests:
         plt.ylabel('combined MSE for 100 random trajectories')
         plt.legend()
         plt.savefig(_save_to_file('Test2p3'))
-        plt.show()
 
     def test_3_1(self, net_name):
         print 'Starting Test 3 part 1'
@@ -380,15 +379,8 @@ class Tests:
             predicted_mean = np.mean(predicted_fit)
             random_mean = np.mean(random_fit)
 
-            # get difference between the two network's error
-            diff_array = [(i, abs(predicted_fit[i] - evolved_fit[i])) for i in num_of_tests]
-            dtype = [('idx', int), ('diff', float)]  # create new type (idx, diff)
-            diff_array = np.array(diff_array, dtype=dtype)  # convert diff_array to numpy array structure
-            diff_array = np.sort(diff_array, order='diff')  # sort array based on difference
-            new_sorting = [i[0] for i in diff_array]  # get the new, sorted indexes
-            # pick out values
-            new_evolved = [evolved_fit[i] for i in new_sorting]
-            new_predict = [predicted_fit[i] for i in new_sorting]
+            new_evolved = np.sort(evolved_fit)
+            new_predict = np.sort(predicted_fit)
 
             print '\nFinished Test3_2 in: %s' % str(datetime.timedelta(seconds=time.time() - start_time))
             print 'Predict mean: %s' % predicted_mean
@@ -405,4 +397,4 @@ class Tests:
             plt.ylabel('fitness of individual')
             plt.legend()
             plt.savefig(_save_to_file('Test3p2'))
-
+            plt.show()

@@ -3,15 +3,15 @@ from Cycle import Cycles
 from Tests import Tests
 
 # Cycles
-light_pos = [Simulator.window_width/2, Simulator.window_height/2]
+light_pos = [1700, 50]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 20
+learning_runs = 200
 learning_time = 100
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
-tap_delay = 10
-max_epochs = 200
+tap_delay = 20
+max_epochs = 300
 use_mean = False
 train_seed = 5
 
@@ -25,12 +25,12 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 100  # this is the same look ahead for the sleep_wake phase
+look_ahead = 50  # this is the same look ahead for the sleep_wake phase
 individuals = 30
-generations = 30
+generations = 20
 
 # Wake testing
-wake_test_iter = 100
+wake_test_iter = 50
 
 # Booleans for running
 train_network = False
@@ -40,7 +40,7 @@ test_network = False
 # Cycle running
 run_one_cycle = False
 run_cycles = False
-run_cycles_net = False
+run_cycles_net = True
 
 sleep_wake = False
 cycles = 2
@@ -54,24 +54,24 @@ test2_2 = False
 test2_3 = False
 # 3. Control System evolution
 test3_1 = False
-test3_2 = True
+test3_2 = False
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r100t100d20e50')
+    cycle = Cycles(light_pos, net_filename='narx/r200t100d40e300')
 else:
     cycle = Cycles(light_pos)
 
 veh_pos, veh_angle = None, None
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
-                        graphics=False, allow_back=False)
+                        graphics=False, allow_back=True)
     veh_pos = cycle.pos_before_collect
     veh_angle = cycle.ang_before_collect
 
-cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, seed=2, graphics=True) if error_graph is True else None
+cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, graphics=True) if error_graph is True else None
 
-cycle.test_network(test_time=200, graphics=True, seed=1) if test_network is True else None
+cycle.test_network(test_time=30, graphics=True, seed=1) if test_network is True else None
 
 if run_one_cycle:
     cycle.wake_learning(50)
@@ -107,4 +107,4 @@ if test3_1:
     test.test_3_1('narx/r200t100d40e300')
 
 if test3_2:
-    test.test_3_2('narx/r200t100d40e300', num_of_tests=2)
+    test.test_3_2('narx/r200t100d40e300', num_of_tests=10)

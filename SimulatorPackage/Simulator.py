@@ -74,7 +74,7 @@ class Simulator:
         # show trajectories of Brain vehicle
         if isinstance(vehicle, BrainVehicle):  # random in blue, predicted in grey, and actual in red
             if vehicle.training_movement is not None:
-                [pygame.draw.circle(screen, (100, 120, 100), (int(p[0]), int(p[1])), 2) for p in
+                [pygame.draw.circle(screen, (150, 200, 150), (int(p[0]), int(p[1])), 2) for p in
                  vehicle.training_movement]
             [pygame.draw.circle(screen, (0, 0, 240), (int(p[0]), int(p[1])), 2) for p in vehicle.previous_movement]
             [pygame.draw.circle(screen, (100, 100, 100), (int(p[0]), int(p[1])), 2) for p in vehicle.predicted_movement]

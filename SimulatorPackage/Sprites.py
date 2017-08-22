@@ -12,7 +12,7 @@ all_sprites_radius = 25.0
 # ratio of image for transformation (diameter / image size)
 image_ratio = (all_sprites_radius * 2) / image_size
 
-world_brain = None
+world_brains = []
 
 
 def run_through_brain(prediction, ind):
@@ -22,23 +22,16 @@ def run_through_brain(prediction, ind):
     :param ind: array of the brain
     :return: wheel velocity left and right
     """
-    if world_brain is None:
-        local_world_brain = ind
-    else:
-        local_world_brain = world_brain
     if len(ind) == 6:
-        wheel_l, wheel_r = [(prediction[0] * local_world_brain[0]) + (prediction[1] * local_world_brain[3]) + local_world_brain[4] / BrainVehicle.bias_constant,
-                            (prediction[1] * local_world_brain[2]) + (prediction[0] * local_world_brain[1]) + local_world_brain[5] / BrainVehicle.bias_constant]
+        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant,
+                            (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant]
         wheel_l += (prediction[0] * ind[0]) + (prediction[1] * ind[3]) + ind[4] / BrainVehicle.bias_constant
         wheel_r += (prediction[1] * ind[2]) + (prediction[0] * ind[1]) + ind[5] / BrainVehicle.bias_constant
     else:
-        wheel_l, wheel_r = [(prediction[0] * local_world_brain[0]) + (prediction[1] * local_world_brain[3]),
-                            (prediction[1] * local_world_brain[2]) + (prediction[0] * local_world_brain[1])]
+        wheel_l, wheel_r = [(prediction[0] * ind[0]) + (prediction[1] * ind[3]),
+                            (prediction[1] * ind[2]) + (prediction[0] * ind[1])]
         wheel_l += (prediction[0] * ind[0]) + (prediction[1] * ind[3])
         wheel_r += (prediction[1] * ind[2]) + (prediction[0] * ind[1])
-    if world_brain is not None:
-        wheel_l /= 2
-        wheel_r /= 2
     return wheel_l, wheel_r
 
 
@@ -223,20 +216,23 @@ class RandomMotorVehicle(pygame.sprite.Sprite):
 
         # calculate motor intensity
         if random.random() < 0.5:
-            self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
-            self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
-
-        # if there is a brain, pass through brain
-        if world_brain is not None:
-            sensor_l = self.sensor_left[-1]
-            sensor_r = self.sensor_right[-1]
-            wheels = run_through_brain([sensor_l, sensor_r], world_brain)
-            w_l_2 = wheels[0]
-            w_r_2 = wheels[1]
-            w_l_1 = w_l_2 + self.gamma * (-w_l_2 + random.normalvariate(self.mean, 4)) + self.bias
-            w_r_1 = w_r_2 + self.gamma * (-w_r_2 + random.normalvariate(self.mean, 4)) + self.bias
-            self.wheel_l = (w_l_1 + w_l_2)/2
-            self.wheel_r = (w_r_1 + w_r_2)/2
+            # if there is a brain, pass through brain
+            if len(world_brains) > 0:
+                w_l_2 = []
+                w_r_2 = []
+                for brain in world_brains:
+                    wheels = run_through_brain([self.sensor_left[-1], self.sensor_right[-1]], brain)
+                    w_l_2.append(wheels[0])
+                    w_r_2.append(wheels[1])
+                w_l_2 = np.mean(w_l_2)
+                w_r_2 = np.mean(w_r_2)
+                w_l_1 = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+                w_r_1 = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
+                self.wheel_l = (w_l_1 + w_l_2)/2
+                self.wheel_r = (w_r_1 + w_r_2)/2
+            else:
+                self.wheel_l = self.wheel_l + self.gamma * (-self.wheel_l + random.normalvariate(self.mean, 4)) + self.bias
+                self.wheel_r = self.wheel_r + self.gamma * (-self.wheel_r + random.normalvariate(self.mean, 4)) + self.bias
 
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)
@@ -312,15 +308,22 @@ class BrainVehicle(pygame.sprite.Sprite):
         sensor_r = self.sensor_right[-1]
 
         # calculate motor intensity
-        wheels = run_through_brain([sensor_l, sensor_r], self.get_brain())
-        self.wheel_l = wheels[0]
-        self.wheel_r = wheels[1]
-
         # if there is a world brain
-        if world_brain is not None:
-            wheels = run_through_brain([sensor_l, sensor_r], world_brain)
-            self.wheel_l = (self.wheel_l + wheels[0])/2
-            self.wheel_r = (self.wheel_r + wheels[1])/2
+        if len(world_brains) > 0:
+            wheel_l, wheel_r = [], []
+            for brain in world_brains:
+                wheels = run_through_brain([sensor_l, sensor_r], brain)
+                wheel_l.append(wheels[0])
+                wheel_r.append(wheels[1])
+            wheels = run_through_brain([sensor_l, sensor_r], self.get_brain())
+            wheel_l.append(wheels[0])
+            wheel_r.append(wheels[1])
+            self.wheel_l = np.mean(wheel_l)
+            self.wheel_r = np.mean(wheel_r)
+        else:
+            wheels = run_through_brain([sensor_l, sensor_r], self.get_brain())
+            self.wheel_l = wheels[0]
+            self.wheel_r = wheels[1]
 
         self.motor_left.append(self.wheel_l)
         self.motor_right.append(self.wheel_r)

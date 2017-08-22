@@ -107,7 +107,7 @@ class Cycles:
         self.real_sensor_log = None  # actual sensor log
 
     def collect_training_data(self, rand_vehicle_pos=False, runs=10, iterations=1000, data_collection_graphics=False,
-                              seed=None, allow_back=True, continuous=False, verbose=True):
+                              seed=None, allow_back=True, continuous=False, gamma=0.3, verbose=True, use_prev_veh=False):
         """ Runs many vehicles in simulations and collects their sensory and motor information
 
         :param rand_vehicle_pos: if the second vehicle doesn't take the previous one's position
@@ -126,14 +126,18 @@ class Cycles:
         sim = Simulator(self.light)
         v = None
         # get new random position for initial starting position of vehicle
-        vehicle_pos, vehicle_angle = find_random_pos(self.light)
+        if use_prev_veh:
+            vehicle_pos, vehicle_angle = self.actual_vehicle.pos[-1], self.actual_vehicle.angle
+        else:
+            vehicle_pos, vehicle_angle = find_random_pos(self.light)
+
         self.pos_before_collect = vehicle_pos
         self.ang_before_collect = vehicle_angle
 
         for run in range(0, runs):  # run simulation for number of runs we have
             # run simulation
             v = sim.quick_simulation(iterations, data_collection_graphics, vehicle_pos, vehicle_angle,
-                                     self.collection_vehicle_pos, allow_backwards=allow_back)
+                                     self.collection_vehicle_pos, allow_backwards=allow_back, gamma=gamma)
             vehicle_data_in_t = []
 
             # get new position
@@ -320,13 +324,14 @@ class Cycles:
         return benchmark_test, time_test
 
     def train_network(self, api, learning_runs, learning_time, layers, delay, max_epochs, use_mean=True, seed=None,
-                      graphics=False, allow_back=False, random_pos=True, save_net=True, continuous=False):
+                      graphics=False, allow_back=False, random_pos=True, save_net=True, continuous=False, gamma=0.3,
+                      use_prev_veh=False):
         self.training_runs, self.training_time, self.network_delay = learning_runs, learning_time, delay
         self.net_filename = 'narx/r%dt%dd%de%d' % (learning_runs, learning_time, delay, max_epochs)
 
         # collect data for NARX and testing and pre-process, separate into training and testing
         train_input = self.collect_training_data(random_pos, learning_runs, learning_time, graphics, seed, allow_back,
-                                                 continuous)
+                                                 continuous, gamma, use_prev_veh=use_prev_veh)
         np.random.shuffle(train_input)
         self.vehicle_training_data = train_input[:len(train_input)/2]
         self.ga_test_data = train_input[len(train_input)/2:]
@@ -341,7 +346,7 @@ class Cycles:
         if api == 'pyrenn':
             self.net = PyrennNarx(layers=layers, delay=delay)
             # train network
-            self.net.train(train_input, verbose=False, max_iter=max_epochs, use_mean=use_mean)
+            self.net.train(train_input, verbose=True, max_iter=max_epochs, use_mean=use_mean)
 
             if save_net:
                 # check if filename is already taken
@@ -442,6 +447,7 @@ class Cycles:
         else:
             data = self.ga_test_data[-1]
             test_data = self.ga_test_data
+        test_data=None
 
         # run GA and find best brain to give to testing
         ga = GA(self.light, graphics=graphics)
@@ -540,11 +546,6 @@ class Cycles:
         if benchmark:
             self._benchmark_tests(vehicle_pos, vehicle_angle)
 
-    def _retrain_with_brain(self):
-        print 'Got brain: ' + str(self.brain)
-        Sprites.world_brain = self.brain
-        self.train_network('pyrenn', 50, 100, [4, 20, 20, 2], 20, 20, graphics=False)
-
     def run_2_cycles(self, look_ahead, individuals, generations, wake_test_iter):
         self.sleep(self.pos_after_collect, self.ang_after_collect, look_ahead, individuals,
                    generations)
@@ -562,6 +563,20 @@ class Cycles:
 
         self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)
 
+    def _another_cycle(self, training_runs, epochs, individuals, generations):
+        print 'Got brain: ' + str(self.brain)
+        Sprites.world_brains.append(self.brain)
+        self.train_network('pyrenn', training_runs, 50, [4, 20, 30, 20, 2], 20, 40, graphics=False, allow_back=True, random_pos=False,
+                           save_net=False, gamma=0.6, use_prev_veh=True)
+
+        self.show_error_graph(graphics=False)
+
+        self.test_network(graphics=False)
+
+        self.sleep(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 30, individuals, generations)
+
+        self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 30, benchmark=False)
+
     def run_2_cycles_with_net(self, initial_random_movement, look_ahead, individuals, generations, wake_test_iter):
 
         self.wake_learning(initial_random_movement)
@@ -570,18 +585,9 @@ class Cycles:
 
         self.wake_testing(self.random_vehicle.pos[-1], self.random_vehicle.angle, wake_test_iter, benchmark=False)
 
-        self._retrain_with_brain()
+        self._another_cycle(30, 40, individuals, generations)
 
-        self.show_error_graph(graphics=False)
-
-        self.test_network(graphics=False)
-
-        self.sleep(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 100, individuals, generations)
-
-        self.wake_testing(self.actual_vehicle.pos[-1], self.actual_vehicle.angle, 400)
-
-
-
+        self._another_cycle(20, 30, individuals, generations)
 
     def test_ga_after_cycle(self, look_ahead):
         """
