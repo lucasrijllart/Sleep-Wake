@@ -1,7 +1,7 @@
 import pyrenn as pr
 import numpy as np
 from Sprites import run_through_brain
-from sklearn.neural_network import MLPRegressor
+# from sklearn.neural_network import MLPRegressor
 import pickle
 
 
