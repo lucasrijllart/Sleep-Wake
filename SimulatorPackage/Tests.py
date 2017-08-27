@@ -1,4 +1,4 @@
-import time, datetime, os
+import time, datetime, os, random
 import numpy as np
 import matplotlib.pyplot as plt
 import Genetic
@@ -37,7 +37,7 @@ class Tests:
         :param random_brains: number of random brains
         :param evolved_brains: number of evolved brains
         """
-        print 'Starting Test 1'
+        print 'Starting Test 1: Evolution of Braitenberg vehicles'
         # run 1 GA
         vehicle_pos, vehicle_angle = Cycle.find_random_pos(self.light)
         ga = GA(self.light, graphics=True)
@@ -112,6 +112,17 @@ class Tests:
         plt.show()
 
     def test_2_1(self, net1, net2, predict_after, iterations, net1delay, net2delay, seed=8):
+        """
+        Test 2 part 1: Environment modelling - identical initial conditions
+        :param net1: first network trained with 10 delays
+        :param net2: second network trained with 40 delays
+        :param predict_after: timestep to predict after
+        :param iterations: total number of iterations for predictions
+        :param net1delay: delays of network 1: 10
+        :param net2delay: delays of network 2: 40
+        :param seed:
+        :return:
+        """
         print 'Starting Test 2 part 1'
         cycle = Cycles(self.light.pos, net_filename=net1)
         cycle.show_error_graph([300, 300], 200, iterations, predict_after, seed=seed, graphics=False)
@@ -291,6 +302,20 @@ class Tests:
         plt.legend()
         plt.savefig(_save_to_file('Test2p3'))
 
+    def test_2_4(self):
+        """
+        Test 2 part 4. Compares a continuous-trained network's accuracy from its last training point and random
+        positions
+        """
+        print 'Starting Test 2 part 4'
+        cycle = Cycles(self.light.pos)
+
+        cycle.train_network('pyrenn', 50, 50, [4, 20, 20, 2], 10, 200, continuous=True)
+
+        cycle.test_network(500, 100, veh_pos_angle=[cycle.pos_after_collect, cycle.ang_after_collect])
+
+        cycle.test_network(500, 100)
+
     def test_3_1(self, net_name):
         print 'Starting Test 3 part 1'
         # test 1 - GA result
@@ -312,23 +337,23 @@ class Tests:
         plt.plot([0, 1], [0, 1])
         plt.show()
 
-    def test_3_2(self, net_name, num_of_tests):
+    def test_3_2(self, net_name, tests):
         """
         3 tests, one to show the trajectory of a generalised vehicle, benchmark test with evolved and random,
-        comparison between evolved GA and simulated GA.
+        fitness comparison between evolved GA and simulated GA.
         :param net_name:
         :param num_of_tests
         :return:
         """
-        print '\nStarting Test 3 part 2'
+        print '\nStarting Test 3 part 2: Evolution of generalised Control System'
         if False:
             cycle = Cycles(self.light.pos, net_filename=net_name)
-            cycle.wake_learning(random_movements=50)
+            cycle.wake_learning(random_movements=40)
             vehicle_pos, vehicle_angle = cycle.random_vehicle.pos[-1], cycle.random_vehicle.angle
 
             rand_test = cycle.collect_training_data(True, 3, 50, verbose=False)
 
-            cycle.sleep(look_ahead=100, individuals=30, generations=20, td=rand_test)
+            cycle.sleep(look_ahead=100, individuals=40, generations=20, td=rand_test)
 
             cycle.wake_testing(vehicle_pos, vehicle_angle, 200, True)
 
@@ -346,55 +371,57 @@ class Tests:
 
         if True:
             start_time = time.time()
-            num_of_tests = range(0, num_of_tests)
+            num_of_tests = range(0, tests)
             cycle = Cycles(self.light.pos, net_filename=net_name)
             ga = GA(self.light, verbose=False)
-            evolved_fit = []
-            predicted_fit = []
-            random_fit = []
+            wake1_iter, wake2_iter, individuals, generations, sim_ga_iter = 50, 200, 25, 20, 200
+            evolved_fit, predicted_fit, random_fit, evolved_time, predicted_time = [], [], [], [], []
 
             for i in num_of_tests:
                 print '\rTest %s/%s  Time elapsed: %s' % (i, len(num_of_tests),
                                                           str(datetime.timedelta(seconds=time.time() - start_time))),
                 # prediction vehicle
-                cycle.wake_learning(50, graphics=False)
+                cycle.wake_learning(wake1_iter, graphics=False)
                 vehicle_pos, vehicle_angle = cycle.random_vehicle.pos[-1], cycle.random_vehicle.angle
                 rand_test = cycle.collect_training_data(True, 3, 50, verbose=False)
                 ga_result = ga.run_offline(cycle.net, cycle.vehicle_first_move, rand_test, 150, vehicle_pos,
-                                           vehicle_angle, self.light.pos)
+                                           vehicle_angle, self.light.pos, individuals, generations)
                 brain = ga_result[0]
                 rand_test = [Cycle.find_random_pos(self.light) for _ in range(0, 3)]
-                predicted_fit.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, 200, self.light))
+                predicted_fit.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, wake2_iter, self.light))
+                pred_time = cycle.training_runs * cycle.training_time + wake2_iter
+                predicted_time.append(pred_time)
                 # GA vehicle
-
-                ga_result = ga.run_with_simulation(vehicle_pos, vehicle_angle, iterations=200, test_data=rand_test)
+                ga_result = ga.run_with_simulation(vehicle_pos, vehicle_angle, individuals=individuals,
+                                                   generations=generations,iterations=sim_ga_iter, test_data=rand_test)
                 brain = ga_result[0]
-                evolved_fit.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, 200, self.light))
+                evolved_fit.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, brain, wake2_iter, self.light))
+                evol_time = individuals * generations * sim_ga_iter + wake2_iter
+                evolved_time.append(evol_time)
                 # random vehicles
                 for _ in range(0, 100):
                     random_fit.append(Genetic.get_fitness(vehicle_pos, vehicle_angle, Genetic.make_random_brain(), 200,
                                                           self.light, rand_test))
+                # fitness test
+                evolved_mean = np.mean(evolved_fit)
+                predicted_mean = np.mean(predicted_fit)
+                random_mean = np.mean(random_fit)
+                new_evolved = np.sort(evolved_fit)
+                new_predict = np.sort(predicted_fit)
+                print 'Predict mean: %s' % predicted_mean
+                print 'Evolved mean: %s' % evolved_mean
+                print 'Random  mean: %s' % random_mean
+                print 'Predict time: %s' % predicted_time
+                print 'Evolved time: %s' % evolved_time
 
-            evolved_mean = np.mean(evolved_fit)
-            predicted_mean = np.mean(predicted_fit)
-            random_mean = np.mean(random_fit)
-
-            new_evolved = np.sort(evolved_fit)
-            new_predict = np.sort(predicted_fit)
-
-            print '\nFinished Test3_2 in: %s' % str(datetime.timedelta(seconds=time.time() - start_time))
-            print 'Predict mean: %s' % predicted_mean
-            print 'Evolved mean: %s' % evolved_mean
-            print 'Random  mean: %s' % random_mean
-
-            plt.title('Fitness of prediction-evolved, world-evolved,\nand random vehicles for multiple models')
-            plt.plot(num_of_tests, new_predict, color='red', label='predicted')
-            plt.plot([0, len(num_of_tests)], [predicted_mean, predicted_mean], '--', color='red', label='predicted mean')
-            plt.plot(num_of_tests, new_evolved, color='green', label='evolved')
-            plt.plot([0, len(num_of_tests)], [evolved_mean, evolved_mean], '--', color='green', label='evolved mean')
-            plt.plot([0, len(num_of_tests)], [random_mean, random_mean], '--', color='grey', label='random mean')
-            plt.xlabel('test number')
-            plt.ylabel('fitness of individual')
-            plt.legend()
-            plt.savefig(_save_to_file('Test3p2'))
-            plt.show()
+                plt.figure(1)
+                plt.title('Fitness of prediction-evolved, world-evolved,\nand random vehicles for multiple models')
+                plt.plot(num_of_tests, new_predict, color='red', label='predicted')
+                plt.plot([0, len(num_of_tests)], [predicted_mean, predicted_mean], '--', color='red', label='predicted mean')
+                plt.plot(num_of_tests, new_evolved, color='green', label='evolved')
+                plt.plot([0, len(num_of_tests)], [evolved_mean, evolved_mean], '--', color='green', label='evolved mean')
+                plt.plot([0, len(num_of_tests)], [random_mean, random_mean], '--', color='grey', label='random mean')
+                plt.xlabel('test number')
+                plt.ylabel('fitness of individual')
+                plt.legend()
+                plt.show()

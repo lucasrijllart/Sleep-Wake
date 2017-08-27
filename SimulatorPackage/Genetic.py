@@ -13,7 +13,7 @@ def make_random_brain():
     :return: the random brain
     """
     # make this -GA.genome_scale, GA.genome_scale
-    return [random.uniform(-2, 2) for _ in range(0, GA.genome_length)]
+    return [random.uniform(0, 2) for _ in range(0, GA.genome_length)]
 
 
 def get_fitness(start_pos, start_a, brain, iterations, light, test_data=None):
@@ -130,9 +130,9 @@ class GA:
             if random.random() < self.mutation_rate:
                 ind[i] += (random.gauss(0, 1) * self.genome_scale*2) / 100
                 if ind[i] > self.genome_scale:
-                    ind[i] = -self.genome_scale + (self.genome_scale - ind[i])
-                if ind[i] < -self.genome_scale:  # make it -self.genome_scale for wrapping around backwards movement
-                    ind[i] = self.genome_scale - (-self.genome_scale - ind[i])
+                    ind[i] = 0.0 + abs(self.genome_scale - ind[i])
+                if ind[i] < 0.0:  # make it -self.genome_scale for wrapping around backwards movement
+                    ind[i] = self.genome_scale - abs(0 - ind[i])
         return ind
 
     def _perform_crossover(self, indwin, indlos):
@@ -350,7 +350,7 @@ class GA:
         return self._start_ga()
 
     def run_with_simulation(self, veh_pos=None, veh_angle=random.randint(0, 360), previous_data=None, test_data=None,
-                            individuals=20, generations=10, iterations=None, world_brain=None):
+                            individuals=25, generations=10, iterations=None, world_brain=None):
         """
         Method to run GA with access to the real-world data. Evolves Braitenberg vehicles.
         :param veh_pos: current vehicle coordinates
