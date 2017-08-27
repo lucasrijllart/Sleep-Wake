@@ -254,7 +254,7 @@ class Cycles:
 
             return (sum(msel) + sum(mser)) / 2
 
-    def _benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=1000, ga_graphics=True):
+    def _benchmark_tests(self, vehicle_pos, vehicle_angle, random_brains=500, ga_graphics=True):
         """
         Shows a graph with the fitness of the predicted vehicle, the evolved vehicle and a number of random brains
         :param vehicle_pos

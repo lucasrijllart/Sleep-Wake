@@ -1,7 +1,7 @@
 from Cycle import Cycles
 from Tests import Tests
 
-# Cycles
+# Light position
 light_pos = [1200, 400]
 
 # Train Network
@@ -14,33 +14,32 @@ max_epochs = 300
 use_mean = False
 train_seed = 5
 
-
 # Error graph
 testing_time = 100  # has to me predict_after + delays + 1
 predict_after = 40
 brain = [-1, 10, -1, 10, 10, 10]
 
+# -- CYCLES --
 # Wake learning (can be less than delay)
 initial_random_movement = 40
 
 # Sleep
 look_ahead = 60  # this is the same look ahead for the sleep_wake phase
 individuals = 30
-generations = 20
+generations = 10
 
 # Wake testing
 wake_test_iter = 80
 
-# Booleans for running
+# -- BOOLEANS USED FOR RUNNING --
 train_network = False
 error_graph = False
 test_network = False
 
-# Cycle running
-run_one_cycle = False
+# Cycles
+run_one_cycle = True
 run_cycles = False
-run_cycles_net = True
-
+run_cycles_net = False
 sleep_wake = False
 cycles = 2
 
@@ -75,38 +74,29 @@ cycle.test_network(test_time=100, graphics=True, seed=1) if test_network is True
 
 if run_one_cycle:
     cycle.wake_learning(50)
-
-    rand_test = cycle.collect_training_data(True, 5, 50)
-
-    cycle.sleep(look_ahead=look_ahead, individuals=individuals, generations=generations, td=rand_test)
-
+    cycle.sleep(look_ahead=look_ahead, individuals=individuals, generations=generations)
     cycle.wake_testing(cycle.random_vehicle.pos[-1], cycle.random_vehicle.angle, wake_test_iter)
 
 if run_cycles:
-    cycle.run_2_cycles('narx/test4/r200t100d40e300_v1', initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
+    cycle.run_2_cycles('narx/r200t100d40e300', initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
 
+# Runs 2 cycles with the first network as the one previously loaded
 if run_cycles_net:
-
     cycle.run_2_cycles_with_net(initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
 
+# Used to run tests
 test = Tests()
 if test1:
     test.test_1()
-
 if test2_1:
     test.test_2_1('narx/test2/r20t100d10e200', 'narx/test2/r20t100d40e200', 40, 100, 10, 40, 8)
-
 if test2_2:
     test.test_2_2('narx/r200t100d40e300', 50)
-
 if test2_3:
     test.test_2_3(num_of_tests=100)
-
 if test2_4:
     test.test_2_4()
-
 if test3_1:
     test.test_3_1('narx/r200t100d40e300')
-
 if test3_2:
     test.test_3_2('narx/r200t100d40e300', tests=2)
