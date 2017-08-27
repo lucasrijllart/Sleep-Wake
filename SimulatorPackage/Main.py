@@ -1,14 +1,13 @@
-from Simulator import Simulator
 from Cycle import Cycles
 from Tests import Tests
 
 # Cycles
-light_pos = [1700, 50]
+light_pos = [1200, 400]
 
 # Train Network
 type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 200
-learning_time = 100
+learning_runs = 50
+learning_time = 50
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
 tap_delay = 20
 max_epochs = 300
@@ -25,12 +24,12 @@ brain = [-1, 10, -1, 10, 10, 10]
 initial_random_movement = 40
 
 # Sleep
-look_ahead = 50  # this is the same look ahead for the sleep_wake phase
+look_ahead = 60  # this is the same look ahead for the sleep_wake phase
 individuals = 30
 generations = 20
 
 # Wake testing
-wake_test_iter = 50
+wake_test_iter = 80
 
 # Booleans for running
 train_network = False
@@ -52,6 +51,7 @@ test1 = False
 test2_1 = False
 test2_2 = False
 test2_3 = False
+test2_4 = False
 # 3. Control System evolution
 test3_1 = False
 test3_2 = False
@@ -65,13 +65,13 @@ else:
 veh_pos, veh_angle = None, None
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
-                        graphics=False, allow_back=True)
+                        graphics=False, allow_back=False, continuous=True)
     veh_pos = cycle.pos_before_collect
     veh_angle = cycle.ang_before_collect
 
 cycle.show_error_graph(veh_pos, veh_angle, testing_time, predict_after, graphics=True) if error_graph is True else None
 
-cycle.test_network(test_time=30, graphics=True, seed=1) if test_network is True else None
+cycle.test_network(test_time=100, graphics=True, seed=1) if test_network is True else None
 
 if run_one_cycle:
     cycle.wake_learning(50)
@@ -83,8 +83,7 @@ if run_one_cycle:
     cycle.wake_testing(cycle.random_vehicle.pos[-1], cycle.random_vehicle.angle, wake_test_iter)
 
 if run_cycles:
-
-    cycle.run_2_cycles(look_ahead, individuals, generations, wake_test_iter)
+    cycle.run_2_cycles('narx/test4/r200t100d40e300_v1', initial_random_movement, look_ahead, individuals, generations, wake_test_iter)
 
 if run_cycles_net:
 
@@ -103,8 +102,11 @@ if test2_2:
 if test2_3:
     test.test_2_3(num_of_tests=100)
 
+if test2_4:
+    test.test_2_4()
+
 if test3_1:
     test.test_3_1('narx/r200t100d40e300')
 
 if test3_2:
-    test.test_3_2('narx/r200t100d40e300', num_of_tests=10)
+    test.test_3_2('narx/r200t100d40e300', tests=2)
