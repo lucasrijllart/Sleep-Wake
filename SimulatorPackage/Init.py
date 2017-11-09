@@ -5,14 +5,14 @@ from Cycle import Cycles
 light_pos = [1100, 600]
 
 # Train Network
-type_of_net = 'pyrenn'  # 'skmlp' or 'pyrenn'
-learning_runs = 20
-learning_time = 150
+type_of_net = 'skmlp'# 'pyrenn'  # 'skmlp' or 'pyrenn'
+learning_runs = 200
+learning_time = 100
 layers = [4, 20, 20, 2]  # [input, layer1, layer2, output] don't change in/out
-tap_delay = 40
-max_epochs = 50
-use_mean = False
-train_seed = 1
+tap_delay = 30 #for the narxMLP errot graph should b set to the same as the training
+max_epochs = 200
+use_mean = False # get over-writen from the drop column functionality
+train_seed = 1 # if we need two nets with same training samples(vehices)
 
 
 # Error graph
@@ -33,30 +33,31 @@ wake_test_iter = 200
 
 # Booleans for running
 train_network = False
-error_graph = False
+error_graph = True
 test_network = False
 
 # Cycle running
 run_cycles = False
 
-sleep_wake = True
+sleep_wake = False
 cycles = 3
 
 
 
 # Functions
 if not train_network:
-    cycle = Cycles(light_pos, net_filename='narx/r200t100d40e300')
+    cycle = Cycles(light_pos, type=type_of_net, net_filename='narx/r200t100d30e200')
 else:
     cycle = Cycles(light_pos)
 
 
 if train_network:
     cycle.train_network(type_of_net, learning_runs, learning_time, layers, tap_delay, max_epochs, use_mean, train_seed,
-                        graphics=True)
+                        graphics=False)
 
-cycle.show_error_graph(testing_time, predict_after, brain=None, seed=None, graphics=True) if error_graph is True else None
 cycle.show_error_graph(testing_time, predict_after, brain=None, seed=2.5, graphics=True) if error_graph is True else None
+cycle.show_error_graph(testing_time, predict_after, brain=None, seed=None, graphics=True) if error_graph is True else None
+
 
 cycle.test_network() if test_network is True else None
 

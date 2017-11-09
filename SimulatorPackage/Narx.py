@@ -280,19 +280,111 @@ class PyrennNarx:
 
 class NarxMLP:
 
-    def __init__(self):
-        self.net = MLPRegressor(hidden_layer_sizes=(100, 100), activation='tanh'
-                ,solver='lbfgs', alpha=0.0001, batch_size='auto'
-                ,learning_rate_init=0.001, max_iter=200, random_state=None, tol=0.00001
+    def __init__(self, layers=[4, 10, 10, 2], delay=10, max_epochs=100):
+        # Calculate the exact input nodes depending on the delay
+        self.hidden_nodes = (layers[1], layers[2])
+        self.inputs = layers[0]
+        self.input_nodes = None
+        self.delay = delay
+        self.past_data = []
+
+        self.net = MLPRegressor(hidden_layer_sizes=self.hidden_nodes, activation='relu'
+                ,solver='adam', alpha=0.0001, batch_size='auto'
+                ,learning_rate_init=0.001, max_iter=max_epochs, random_state=None, tol=0.00001
                 , verbose=True, warm_start=False
                 ,early_stopping=False, validation_fraction=0.1)
 
-    def fit(self, train_data, delay, use_mean):
-        x, t = prepare_data(train_data, delay, use_mean)
+    def set_net(self, net, delay=30):
+        # Get the delay manualy
+        # calculate the time-series inputs  for the
+        # saved network and set the input nodes number
+        self.delay = delay
+        self.input_nodes = 4 * self.delay
+        self.net = net
+
+    def fit(self, train_data, use_mean):
+        x, t = prepare_data(train_data, self.delay, use_mean)
         return self.net.fit(x, t)
+
+    def set_past_data(self, past_data):
+        self.past_data = past_data
 
     def to_file(self, filename):
         pickle.dump(self.net, open(filename, 'wb'))
+
+    def update_past_data(self, data):
+        self.past_data = np.concatenate((self.past_data, data), axis=1)
+
+
+    def predict(self, x, pre_inputs=None, pre_outputs=None):
+        if pre_inputs is not None:
+            y = pr.NNOut(x, self.net, pre_inputs, pre_outputs)
+        else:
+            delayed_input = []
+            for idx in range(0, self.inputs):
+                delayed_input.append(x[idx, 0])
+                delay_data = self.past_data[idx, -(self.delay-1):]
+                delayed_input.extend(delay_data[::-1])
+            delayed_input = np.array(delayed_input)
+            #Remove completely as we do not need to reshape.
+            #delayed_input = np.reshape(delayed_input, (self.input_nodes, 1))
+            y = self.net.predict(delayed_input)
+            y = np.reshape(y, (2, 1))
+        return y
+
+    def predict_error_graph(self, data, look_ahead, predict_after):
+        # determine the past data
+        past_data = np.array(data[:, :predict_after])
+        # intialize the arrays for the logs
+        sensor_log = np.array([[], []])  # return that
+        wheel_log = []  # return that
+
+        # If no previous observations. Add zro padding
+        missing_slice = int(self.delay - past_data.shape[1])
+        if missing_slice > 0:
+            padding = np.zeros((4, missing_slice), dtype=float)
+            sensors = data[2:, 0]
+            padding[2, :] = sensors[0]
+            padding[3, :] = sensors[1]
+            past_data = np.concatenate((padding, past_data), axis=1)
+
+        next_input = np.array(past_data[:, -1])
+        next_input = np.array([[x] for x in next_input])
+
+        self.set_past_data(past_data[:, :-1])  # set the past data
+        # Execute the first prediction without adding it to the data, as the first prediction comes from actual data
+        # 1. predict next sensory output
+        prediction = self.predict(next_input)
+        # ad the past data to the network
+        self.update_past_data(next_input)
+        # 2. log predicted sensory information to list (used for fitness)
+        sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+        # 3. Get motor information
+        wheel_l, wheel_r = [data[0, predict_after], data[1, predict_after]]
+        wheel_log.append([wheel_l, wheel_r])
+
+        # 4. add this set of data to the input of the prediction
+        next_input = np.array([[wheel_l], [wheel_r], prediction[0], prediction[1]]).reshape(4, 1)
+
+        for it in range(1, look_ahead):  # loop through the time steps
+            # 1. predict next sensory output
+            prediction = self.predict(next_input)
+
+            # 2. log predicted sensory information to list (used for fitness)
+            sensor_log = np.concatenate((sensor_log, prediction), axis=1)
+
+            # 3. feed it to the brain to get motor information
+            wheel_l, wheel_r = [data[0, predict_after+it], data[1, predict_after+it]]
+            wheel_log.append([wheel_l, wheel_r])
+            # 4. append previous step to the full data
+            #self.update_past_data(next_input)
+            self.past_data = np.concatenate((self.past_data, next_input), axis=1)
+
+            # 5. set the predicted data to the next input of the prediction
+            next_input = np.array([[wheel_l], [wheel_r], prediction[0], prediction[1]]).reshape(4, 1)
+            # loop back to 1 until reached time-step
+        return sensor_log, wheel_log
 
 
 
@@ -354,6 +446,4 @@ def prepare_data(data, delay, use_mean):
     target_matrices = np.array(target_matrices)
     target_matrices = np.concatenate((target_matrices[:]), axis=1)
     target_matrices = np.transpose(target_matrices)
-    # print target_matrices
-    # print input_matrices
     return input_matrices, target_matrices

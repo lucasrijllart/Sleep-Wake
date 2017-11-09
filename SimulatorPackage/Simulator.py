@@ -58,8 +58,8 @@ def show_graph(vehicle):
 
 
 class Simulator:
-    window_width = 1800  # 1240
-    window_height = 1200  # 720
+    window_width = 1600  # 1240
+    window_height = 1000  # 720
 
     def __init__(self, light):
         pygame.init()

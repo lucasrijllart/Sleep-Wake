@@ -47,8 +47,10 @@ class Cycles:
         self.random_movements, self.after_ga_movements = None, None
 
         if type == 'skmlp':
-            self.net = narx.load_narx_mlp(net_filename)
-        if net_filename is not None:
+            saved_net = narx.load_narx_mlp(net_filename)
+            self.net = NarxMLP()
+            self.net.set_net(saved_net)
+        elif net_filename is not None:
             start_time = time.time()
             saved_net = narx.load_pyrenn(net_filename)
             self.net = PyrennNarx()
@@ -306,9 +308,9 @@ class Cycles:
             # save network to file
             self.net.save_to_file(filename=filename)
         elif api == 'skmlp':
-            self.net = NarxMLP()
+            self.net = NarxMLP(layers, delay, max_epochs)
 
-            self.net.fit(train_input, delay, use_mean)
+            self.net.fit(train_input, use_mean)
 
             # check if filename is already taken
             count = 1
@@ -450,7 +452,7 @@ class Cycles:
         self.ga_generations = generations
         ga = GA(self.light, self.sim, graphics=False)
 
-        fitness_eval_data = self.collect_random_data(True, 4, 40, False, seed=1)
+        fitness_eval_data = self.collect_random_data(True, 3, 40, False, seed=2.5)
         for _ in range(0, cycles):
 
             # SLEEP NOW
@@ -496,7 +498,7 @@ class Cycles:
     def run_cycles(self, random_movements=None, cycles=2,  look_ahead=100, individuals=25, generations=10):
 
         if random_movements is not None:
-            self.wake_learning(random_movements, seed=2)
+            self.wake_learning(random_movements, seed=1)
             self.sleep_wake(self.random_vehicle, cycles=cycles, look_ahead=look_ahead,
                             individuals=individuals, generations=generations)
         else:
