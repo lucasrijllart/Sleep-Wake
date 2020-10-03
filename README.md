@@ -22,3 +22,14 @@ Many modern machines are given increasingly complex models of their environment 
 To test a new behaviour, a robot would have to execute the new actions in the real world, and observe the result. This method would take an unreasonable amount of time to discover a new behaviour. We are therefore looking to shift all real-time actions to offline processing, where the robot can use its understanding of the world to predict its next behaviour.
 
 We decide to name the active movement of the robot a “wake” stage. To create an opportunity to do processing, we incorporate a “sleep” stage that can be considered like “thinking”. The robot can then alternate between wake stage and sleep stage to minimise real movement.
+
+## Preview
+This is a collection of images and graphs that illustrate the project. For more information please contact me.
+
+![SleepDiagram](https://user-images.githubusercontent.com/11093148/94996049-23e14380-059a-11eb-8531-a35de3a0d42c.png)
+
+![20 vehicles with seed 5](https://user-images.githubusercontent.com/11093148/94996041-19bf4500-059a-11eb-96ba-13e0d7109a24.PNG)
+
+![T1](https://user-images.githubusercontent.com/11093148/94996053-2ba0e800-059a-11eb-9d1a-cf0dc0c59723.png)
+
+![T1_fin_2](https://user-images.githubusercontent.com/11093148/94996052-28a5f780-059a-11eb-826f-b6f4eef5aec1.png)
